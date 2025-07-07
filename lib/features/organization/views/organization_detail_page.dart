@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants.dart';
 import '../../../core/models/organization.dart';
@@ -35,81 +36,83 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
   }
 
   void _loadMembers() async {
-    try {
-      final response = await supabase
-          .from(organizationUsersTable)
-          .select('*, profiles:user_id(email)')
-          .eq('organization_id', widget.organization.id);
+  try {
+    final response = await supabase
+        .from(organizationUsersTable)
+        .select('*')
+        .eq('organization_id', widget.organization.id);
 
-      final members = response.map((item) {
-        return OrganizationMember(
-          id: item['id'],
-          organizationId: item['organization_id'],
-          userId: item['user_id'],
-          email: item['profiles']?['email'] ?? 'Unknown',
-          role: item['role'],
-          joinedAt: DateTime.parse(item['joined_at']),
-        );
-      }).toList();
-
-      setState(() {
-        _members = members;
-        _isLoading = false;
-      });
-    } catch (error) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        context.showSnackBar('Error loading members: $error', isError: true);
-      }
-    }
-  }
-
-  void _inviteMember() async {
-    if (_emailController.text.trim().isEmpty) {
-      context.showSnackBar('Please enter an email address', isError: true);
-      return;
-    }
-
-    setState(() => _isInviting = true);
-
-    try {
-      // Check if user already exists as member
-      final existingMember = _members.any(
-        (member) =>
-            member.email.toLowerCase() ==
-            _emailController.text.trim().toLowerCase(),
+    final members = response.map((item) {
+      return OrganizationMember(
+        id: item['id'],
+        organizationId: item['organization_id'],
+        userId: item['user_id'],
+        email: item['email'] ?? 'Unknown',
+        role: item['role'],
+        joinedAt: DateTime.parse(item['joined_at']),
       );
+    }).toList();
 
-      if (existingMember) {
-        throw Exception('User is already a member of this organization');
-      }
-
-      // For now, we'll add the member directly
-      // In a real app, you'd send an invitation email
-      await supabase.from(organizationUsersTable).insert({
-        'id': const Uuid().v4(),
-        'organization_id': widget.organization.id,
-        'user_id': '', // This would be filled when user accepts invitation
-        'role': 'member',
-        'joined_at': DateTime.now().toIso8601String(),
-      });
-
-      _emailController.clear();
-      _loadMembers();
-
-      if (mounted) {
-        context.showSnackBar('Member invited successfully!');
-      }
-    } catch (error) {
-      if (mounted) {
-        context.showSnackBar('Error inviting member: $error', isError: true);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isInviting = false);
-      }
+    setState(() {
+      _members = members;
+      _isLoading = false;
+    });
+  } catch (error) {
+    setState(() => _isLoading = false);
+    if (mounted) {
+      context.showSnackBar('Error loading members: $error', isError: true);
     }
   }
+}
+
+
+ Future<void> _sendInvite() async {
+  final email = _emailController.text.trim().toLowerCase();
+  if (email.isEmpty) {
+    context.showSnackBar('Please enter an email address', isError: true);
+    return;
+  }
+
+  setState(() => _isInviting = true);
+
+  try {
+  final email = _emailController.text.trim().toLowerCase();
+  final orgId = widget.organization.id;
+
+  if (orgId == null || orgId.toString().isEmpty) {
+    throw Exception("Organization ID is missing!");
+  }
+
+  final inviteId = const Uuid().v4();
+  await supabase.from('organization_invites').insert({
+    'id': inviteId,
+    'organization_id': orgId,
+    'email': email,
+  });
+
+  context.showSnackBar('✅ Invite sent to $email');
+  _copyInviteUrl(inviteId);
+  _emailController.clear();
+} catch (e) {
+  context.showSnackBar('❌ Failed to send invite: $e', isError: true);
+}
+
+}
+
+
+
+void _copyInviteUrl(String inviteId) {
+  final inviteUrl = 'https://your-app.com/invite/$inviteId';
+
+  Clipboard.setData(ClipboardData(text: inviteUrl)).then((_) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ Invite URL copied to clipboard!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +206,7 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
                           SizedBox(
                             width: double.infinity,
                             child: LoadingButton(
-                              onPressed: _inviteMember,
+                              onPressed: _sendInvite,
                               isLoading: _isInviting,
                               text: AppStrings.invite,
                             ),

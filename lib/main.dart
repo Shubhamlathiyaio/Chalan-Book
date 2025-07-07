@@ -42,6 +42,8 @@ extension ContextExtension on BuildContext {
   void showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
+        behavior: 
+        SnackBarBehavior.floating,
         content: Text(message),
         backgroundColor: isError
             ? Theme.of(this).colorScheme.error

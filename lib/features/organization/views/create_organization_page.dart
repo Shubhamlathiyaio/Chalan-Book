@@ -26,47 +26,60 @@ class _CreateOrganizationPageState extends State<CreateOrganizationPage> {
   }
 
   void _createOrganization() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
 
-    try {
-      final user = supabase.auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
+  try {
+    final user = supabase.auth.currentUser;
+    if (user == null) throw Exception('User not authenticated');
 
-      final organizationId = const Uuid().v4();
-      final userId = user.id;
+    final orgName = _nameController.text.trim();
 
-      // 1. Insert the organization
-      await supabase.from(organizationsTable).insert({
-        'id': organizationId,
-        'name': _nameController.text.trim(),
-        // 'description': _descriptionController.text.trim().isEmpty 
-        //     ? null 
-        //     : _descriptionController.text.trim(),
-        'owner_id': userId,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+    // ✅ 1. Check if organization name already exists
+    final existing = await supabase
+        .from(organizationsTable)
+        .select('id')
+        .eq('name', orgName)
+        .maybeSingle();
 
-      // 2. Add user to organization_users
-      await supabase.from(organizationUsersTable).insert({
-        'organization_id': organizationId,
-        'user_id': userId,
-        'role': 'admin',
-        'joined_at': DateTime.now().toIso8601String(),
-      });
-
-      if (mounted) {
-        context.showSnackBar('Organization created successfully!');
-        Navigator.pop(context, true);
-      }
-    } catch (error) {
-      if (mounted) {
-        context.showSnackBar('Error: $error', isError: true);
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (existing != null) {
+      throw Exception('Organization name already exists');
     }
+
+    final organizationId = const Uuid().v4();
+    final userId = user.id;
+
+    // ✅ 2. Insert the organization
+    await supabase.from(organizationsTable).insert({
+      'id': organizationId,
+      'name': orgName,
+      'owner_id': userId,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
+    // ✅ 3. Add user to organization_users
+    await supabase.from(organizationUsersTable).insert({
+      'id': const Uuid().v4(),
+      'organization_id': organizationId,
+      'user_id': userId,
+      'email': user.email,
+      'role': 'admin',
+      'joined_at': DateTime.now().toIso8601String(),
+    });
+
+    if (mounted) {
+      context.showSnackBar('✅ Organization created successfully!');
+      Navigator.pop(context, true);
+    }
+  } catch (error) {
+    if (mounted) {
+      context.showSnackBar('❌ Error: $error', isError: true);
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/constants.dart';
 import '../../../main.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -29,30 +30,62 @@ class _LoginPageState extends State<LoginPage> {
 
   void _login() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
-      final response = await supabase.auth.signInWithPassword(
+      final res = await supabase.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      if (response.user != null && mounted) {
+
+      final user = res.user;
+      if (user == null) return;
+
+      final email = user.email!.toLowerCase();
+
+      /* 🔗 fetch pending invites for this email */
+      final List<dynamic> invitesRaw = await supabase
+          .from('organization_invites')
+          .select('id, organization_id')
+          .eq('email', email);
+
+      final invites = List<Map<String, dynamic>>.from(invitesRaw);
+
+      /* link each invite */
+      for (final invite in invites) {
+        print('Invite++++: $invite');
+        await supabase.from(organizationUsersTable).insert({
+          'id': const Uuid().v4(),
+          'organization_id': invite['organization_id'],
+          'user_id': user.id,
+          'email': email,
+          'role': 'member',
+          'joined_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      /* delete processed invites */
+      if (invites.isNotEmpty) {
+        final inviteIds = invites.map((i) => i['id']).toList();
+        await supabase
+            .from('organization_invites')
+            .delete()
+            .inFilter('id', inviteIds); // inFilter is correct
+      }
+
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
         );
       }
-    } on AuthException catch (error) {
+    } on AuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
         );
       }
-    } catch (error) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -62,9 +95,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -80,11 +111,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
-                  Icons.receipt_long,
-                  size: 80,
-                  color: Colors.blue,
-                ),
+                const Icon(Icons.receipt_long, size: 80, color: Colors.blue),
                 const SizedBox(height: 24),
                 Text(
                   AppStrings.appName,
@@ -99,10 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                 Text(
                   'Welcome back!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 48),
                 CustomTextField(

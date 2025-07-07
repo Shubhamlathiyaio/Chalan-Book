@@ -1,3 +1,9 @@
+
+class Uri{
+  static String base = "https://yourapp.com";
+}
+
+
 // Supabase Configuration - Replace with your actual values
 const String supabaseUrl = 'https://adyrowyzxxggcbblndcb.supabase.co';
 const String supabaseAnonKey =
