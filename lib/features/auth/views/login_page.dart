@@ -1,184 +1,136 @@
+import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
+import 'package:chalan_book_app/bloc/auth/auth_event.dart';
+import 'package:chalan_book_app/bloc/auth/auth_state.dart';
+import 'package:chalan_book_app/bloc/home/home_bloc.dart';
+import 'package:chalan_book_app/bloc/home/home_event.dart';
+import 'package:chalan_book_app/core/constants/strings.dart';
+import 'package:chalan_book_app/features/auth/views/signup_page.dart';
+import 'package:chalan_book_app/features/home/views/home_page.dart';
+import 'package:chalan_book_app/shared/widgets/custom_text_field.dart';
+import 'package:chalan_book_app/shared/widgets/loading_button.dart';
+import 'package:chalan_book_app/theme/theme_extension.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
-import '../../../core/constants.dart';
-import '../../../main.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/loading_button.dart';
-import '../../home/views/home_page.dart';
-import 'signup_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class LoginPage extends StatelessWidget {
+  LoginPage({super.key});
 
-  @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _login() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final res = await supabase.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      final user = res.user;
-      if (user == null) return;
-
-      final email = user.email!.toLowerCase();
-
-      /* 🔗 fetch pending invites for this email */
-      final List<dynamic> invitesRaw = await supabase
-          .from('organization_invites')
-          .select('id, organization_id')
-          .eq('email', email);
-
-      final invites = List<Map<String, dynamic>>.from(invitesRaw);
-
-      /* link each invite */
-      for (final invite in invites) {
-        print('Invite++++: $invite');
-        await supabase.from(organizationUsersTable).insert({
-          'id': const Uuid().v4(),
-          'organization_id': invite['organization_id'],
-          'user_id': user.id,
-          'email': email,
-          'role': 'member',
-          'joined_at': DateTime.now().toIso8601String(),
-        });
-      }
-
-      /* delete processed invites */
-      if (invites.isNotEmpty) {
-        final inviteIds = invites.map((i) => i['id']).toList();
-        await supabase
-            .from('organization_invites')
-            .delete()
-            .inFilter('id', inviteIds); // inFilter is correct
-      }
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.receipt_long, size: 80, color: Colors.blue),
-                const SizedBox(height: 24),
-                Text(
-                  AppStrings.appName,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+          padding: const EdgeInsets.all(24),
+          child: BlocConsumer<AuthBloc, AuthState>(
+            listener: (_, state) {
+              if (state is AuthSuccess) {
+                context.pushReplacement(
+                  BlocProvider(
+                    create: (_) => HomeBloc()..add(LoadOrganizations()),
+                    child: const HomePage(),
                   ),
+                );
+              }
+              if (state is AuthFailure) (msg) => context.showSnackbar(msg);
+            },
+            builder: (_, state) {
+              final loading = state is AuthLoading;
+
+              return Form(
+                key: _formKey,
+                child: ListView(
+                  children: [
+                    const _Header(),
+                    const SizedBox(height: 48),
+                    _EmailField(ctrl: _emailCtrl),
+                    const SizedBox(height: 16),
+                    _PassField(ctrl: _passCtrl),
+                    const SizedBox(height: 24),
+                    LoadingButton(
+                      text: AppStrings.login,
+                      isLoading: loading,
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          context.read<AuthBloc>().add(
+                            AuthLoginRequested(
+                              email: _emailCtrl.text.trim(),
+                              password: _passCtrl.text,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => context.push(const SignupPage()),
+                      child: Text(AppStrings.dontHaveAccount),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Welcome back!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 48),
-                CustomTextField(
-                  controller: _emailController,
-                  label: AppStrings.email,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  controller: _passwordController,
-                  label: AppStrings.password,
-                  obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                LoadingButton(
-                  onPressed: _login,
-                  isLoading: _isLoading,
-                  text: AppStrings.login,
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SignupPage()),
-                    );
-                  },
-                  child: Text(AppStrings.dontHaveAccount),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
     );
   }
+}
+
+/* ---------------- small stateless helpers ---------------- */
+
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      const Icon(Icons.receipt_long, size: 80, color: Colors.blue),
+      const SizedBox(height: 24),
+      Text(
+        AppStrings.appName,
+        style: context.h1.copyWith(color: Colors.blue),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Welcome back!',
+        style: context.body2.copyWith(color: Colors.grey[600]),
+        textAlign: TextAlign.center,
+      ),
+    ],
+  );
+}
+
+class _EmailField extends StatelessWidget {
+  const _EmailField({required this.ctrl});
+  final TextEditingController ctrl;
+
+  @override
+  Widget build(BuildContext context) => CustomTextField(
+    controller: ctrl,
+    label: AppStrings.email,
+    keyboardType: TextInputType.emailAddress,
+    validator: (v) => v == null || v.isEmpty
+        ? 'Enter email'
+        : v.contains('@')
+        ? null
+        : 'Invalid email',
+  );
+}
+
+class _PassField extends StatelessWidget {
+  const _PassField({required this.ctrl});
+  final TextEditingController ctrl;
+
+  @override
+  Widget build(BuildContext context) => CustomTextField(
+    controller: ctrl,
+    label: AppStrings.password,
+    obscureText: true,
+    validator: (v) => v == null || v.length < 6 ? 'Min 6 characters' : null,
+  );
 }

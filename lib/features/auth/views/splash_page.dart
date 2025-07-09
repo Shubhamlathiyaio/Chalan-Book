@@ -1,4 +1,8 @@
+import 'package:chalan_book_app/bloc/home/home_bloc.dart';
+import 'package:chalan_book_app/bloc/home/home_event.dart';
+import 'package:chalan_book_app/theme/theme_extension.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../main.dart';
 import '../../home/views/home_page.dart';
 import 'login_page.dart';
@@ -19,18 +23,21 @@ class _SplashPageState extends State<SplashPage> {
 
   void _checkAuthStatus() async {
     await Future.delayed(const Duration(seconds: 2));
-    
+
     final session = supabase.auth.currentSession;
     if (mounted) {
       if (session != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
+        context.pushReplacement(
+          BlocProvider(
+            create: (_) => HomeBloc(
+            )..add(LoadOrganizations()),
+            child: const HomePage(),
+          ),
         );
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
+          MaterialPageRoute(builder: (_) => LoginPage()),
         );
       }
     }
@@ -44,11 +51,7 @@ class _SplashPageState extends State<SplashPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.receipt_long,
-              size: 80,
-              color: Colors.white,
-            ),
+            const Icon(Icons.receipt_long, size: 80, color: Colors.white),
             const SizedBox(height: 16),
             const Text(
               'Chalan Book',
@@ -61,15 +64,10 @@ class _SplashPageState extends State<SplashPage> {
             const SizedBox(height: 8),
             const Text(
               'Manage your chalans efficiently',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.white70),
             ),
             const SizedBox(height: 40),
-            const CircularProgressIndicator(
-              color: Colors.white,
-            ),
+            const CircularProgressIndicator(color: Colors.white),
           ],
         ),
       ),

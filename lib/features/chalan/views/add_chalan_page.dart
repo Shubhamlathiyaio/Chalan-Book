@@ -1,20 +1,18 @@
 import 'dart:io';
+import 'package:chalan_book_app/core/constants/app_keys.dart';
+import 'package:chalan_book_app/core/constants/strings.dart';
+import 'package:chalan_book_app/core/models/chalan.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-import '../../../core/constants.dart';
 import '../../../core/models/organization.dart';
 import '../../../main.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/loading_button.dart';
 
 class AddChalanPage extends StatefulWidget {
   final Organization organization;
+  final Chalan? chalan;
 
-  const AddChalanPage({
-    super.key,
-    required this.organization,
-  });
+  const AddChalanPage({super.key, required this.organization, this.chalan});
 
   @override
   State<AddChalanPage> createState() => _AddChalanPageState();
@@ -25,7 +23,7 @@ class _AddChalanPageState extends State<AddChalanPage> {
   final _descriptionController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
-  
+
   File? _selectedImage;
   bool _isLoading = false;
 
@@ -99,9 +97,10 @@ class _AddChalanPageState extends State<AddChalanPage> {
 
       // Upload image if selected
       if (_selectedImage != null) {
-        final fileName = '${chalanId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final fileName =
+            '${chalanId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final imageBytes = await _selectedImage!.readAsBytes();
-        
+
         await supabase.storage
             .from(chalanImagesBucket)
             .uploadBinary(fileName, imageBytes);
@@ -137,126 +136,121 @@ class _AddChalanPageState extends State<AddChalanPage> {
     }
   }
 
+  Future<void> _updateChalan() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      String? imageUrl = widget.chalan!.imageUrl;
+
+      // Upload new image if selected
+      if (_selectedImage != null) {
+        final fileName =
+            '${widget.chalan!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final imageBytes = await _selectedImage!.readAsBytes();
+
+        await supabase.storage
+            .from(chalanImagesBucket)
+            .uploadBinary(fileName, imageBytes);
+
+        imageUrl = supabase.storage
+            .from(chalanImagesBucket)
+            .getPublicUrl(fileName);
+      }
+
+      // Update chalan in DB
+      await supabase
+          .from(chalansTable)
+          .update({
+            'chalan_number': _chalanNumberController.text.trim(),
+            'description': _descriptionController.text.trim(),
+            'image_url': imageUrl,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', widget.chalan!.id);
+
+      if (mounted) {
+        context.showSnackBar('Chalan updated successfully!');
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showSnackBar('Error updating chalan: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isUpdate = widget.chalan != null;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.addChalan),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Image Section
+      appBar: AppBar(title: Text(isUpdate ? 'Update Chalan' : 'Add Chalan')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ✅ IMAGE SECTION
+            if (isUpdate && widget.chalan!.imageUrl != null)
               GestureDetector(
-                onTap: _showImageSourceDialog,
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: _selectedImage != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _selectedImage!,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_a_photo,
-                              size: 48,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              AppStrings.selectImage,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Form Fields
-              CustomTextField(
-                controller: _chalanNumberController,
-                label: AppStrings.chalanNumber,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter chalan number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _descriptionController,
-                label: AppStrings.description,
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter description';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Organization Info
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.business, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Organization',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              widget.organization.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                onTap: () => _showImageSourceDialog(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Current Image:",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        widget.chalan!.imageUrl!,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.broken_image),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
-              const SizedBox(height: 32),
 
-              // Save Button
-              LoadingButton(
-                onPressed: _saveChalan,
-                isLoading: _isLoading,
-                text: AppStrings.save,
-              ),
-            ],
-          ),
+            // ✅ COMMON FIELDS
+            TextFormField(
+              initialValue: (isUpdate ? widget.chalan?.chalanNumber : 0)
+                  .toString(),
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              initialValue: isUpdate ? widget.chalan?.description : '',
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+
+            const Spacer(),
+
+            // ✅ BUTTON
+            ElevatedButton.icon(
+              onPressed: () {
+                if (isUpdate) {
+                  _updateChalan();
+                } else {
+                  _saveChalan();
+                }
+              },
+              icon: Icon(isUpdate ? Icons.save : Icons.add),
+              label: Text(isUpdate ? 'Update Chalan' : 'Add Chalan'),
+            ),
+          ],
         ),
       ),
     );

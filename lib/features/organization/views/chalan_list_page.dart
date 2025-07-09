@@ -1,6 +1,9 @@
+import 'package:chalan_book_app/core/constants/app_keys.dart';
+import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/features/chalan/views/add_chalan_page.dart';
+import 'package:chalan_book_app/theme/theme_extension.dart';
 import 'package:flutter/material.dart';
-import '../../../core/constants.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/chalan.dart';
 import '../../../core/models/organization.dart';
 import '../../../main.dart';
@@ -10,10 +13,7 @@ import 'chalan_detail_page.dart';
 class ChalanListPage extends StatefulWidget {
   final Organization? organization;
 
-  const ChalanListPage({
-    super.key,
-    required this.organization,
-  });
+  const ChalanListPage({super.key, required this.organization});
 
   @override
   State<ChalanListPage> createState() => _ChalanListPageState();
@@ -58,8 +58,6 @@ class _ChalanListPageState extends State<ChalanListPage> {
       final chalans = response.map((item) => Chalan.fromJson(item)).toList();
 
       setState(() {
-        print("chalans = ${chalans.length}");
-        print("imageUrl = ${chalans.first.imageUrl}");
         _chalans = chalans;
         _isLoading = false;
       });
@@ -145,7 +143,10 @@ class _ChalanListPageState extends State<ChalanListPage> {
                               chalan.imageUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.receipt_long, color: Colors.blue);
+                                return const Icon(
+                                  Icons.receipt_long,
+                                  color: Colors.blue,
+                                );
                               },
                             ),
                           )
@@ -159,20 +160,37 @@ class _ChalanListPageState extends State<ChalanListPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        chalan.description??"",
+                        chalan.description ?? "",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         _formatDate(chalan.dateTime),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
                       ),
                     ],
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _navigateToAddChalan(chalan),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          context.popup(
+                            title: "Are you sure Delete Chalan",
+                            content: Text("This action will permanently delete this chalan. Are you sure you want to continue?"),
+                            cancelText: "Cancel",onConfirm: () {},
+                          );
+                        },
+                      ),
+                      const Icon(Icons.arrow_forward_ios, size: 16),
+                    ],
+                  ),
                   onTap: () => _navigateToChalanDetail(chalan),
                 ),
               );
@@ -183,13 +201,25 @@ class _ChalanListPageState extends State<ChalanListPage> {
     );
   }
 
-  void _navigateToAddChalan() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddChalanPage(organization: widget.organization!),
-      ),
-    );
+  void _navigateToAddChalan([Chalan? chalan]) async {
+    final bool result;
+    if (chalan == null) {
+      result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AddChalanPage(organization: widget.organization!),
+        ),
+      );
+    } else {
+      result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              AddChalanPage(organization: widget.organization!, chalan: chalan),
+        ),
+      );
+    }
+
     if (result == true) {
       _loadChalans();
     }
@@ -198,9 +228,7 @@ class _ChalanListPageState extends State<ChalanListPage> {
   void _navigateToChalanDetail(Chalan chalan) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ChalanDetailPage(chalan: chalan),
-      ),
+      MaterialPageRoute(builder: (_) => ChalanDetailPage(chalan: chalan)),
     );
   }
 
