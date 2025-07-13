@@ -3,12 +3,11 @@ import 'package:chalan_book_app/bloc/organization/organization_state.dart';
 import 'package:chalan_book_app/core/constants/app_keys.dart';
 import 'package:chalan_book_app/core/models/organization.dart';
 import 'package:chalan_book_app/main.dart';
+import 'package:chalan_book_app/shared/widgets/organization_selector.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
-  Organization? selectedOrg;
-  Organization? get currentOrg => selectedOrg;
   OrganizationBloc() : super(OrganizationInitial()) {
     // on<OrganizationInitialEvent>(
     //   (OrganizationInitialEvent event, Emitter<OrganizationState> emit)  listen<OrganizationState>{},
@@ -54,7 +53,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
         'joined_at': DateTime.now().toIso8601String(),
       });
 
-      emit(OrganizationCreatedSuccess());
+      emit(OrganizationState());
     } catch (e) {
       emit(OrganizationFailure(e.toString()));
     }
@@ -82,7 +81,6 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
           )
           .toList();
 
-      selectedOrg ??= orgs.isNotEmpty ? orgs.first : null;
 
       emit(OrganizationLoaded(orgs));
     } catch (e) {
@@ -90,10 +88,32 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
     }
   }
 
-  _onSelectOrganization(
-    SelectOrganization event,
-    Emitter<OrganizationState> emit,
-  ) {
-    selectedOrg = event.currentOrganization;
+ _onSelectOrganization(
+  SelectOrganization event,
+  Emitter<OrganizationState> emit,
+) {
+  // ✅ Fix: Keep existing organizations and update current org
+  if (state is OrganizationLoaded) {
+    final currentState = state as OrganizationLoaded;
+    emit(OrganizationLoaded(
+      currentState.organizations,
+      currentOrg: event.currentOrganization,
+    ));
+  } else {
+    emit(OrganizationState(currentOrg: event.currentOrganization));
+  }
+}
+
+  
+  @override
+  void onChange(Change<OrganizationState> change) {
+    super.onChange(change);
+    print('OrganizationBloc change: $change');
+  }
+
+  @override
+  void onTransition(Transition<OrganizationEvent, OrganizationState> transition) {
+    print('OrganizationBloc transition: $transition');
+    super.onTransition(transition);
   }
 }

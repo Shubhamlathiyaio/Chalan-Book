@@ -1,25 +1,26 @@
 import 'package:chalan_book_app/core/models/organization.dart';
 
-abstract class OrganizationState {}
-
-class OrganizationInitial extends OrganizationState {}
-
-class OrganizationLoading extends OrganizationState {}
-
-class OrganizationLoaded extends OrganizationState {
+class OrganizationState {
   final List<Organization> organizations;
-  OrganizationLoaded(this.organizations);
+  final Organization? currentOrg; // Optional selected org
+
+  const OrganizationState({this.organizations = const [], this.currentOrg});
 }
 
-class OrganizationCreatedSuccess extends OrganizationState {}
+class OrganizationInitial extends OrganizationState {
+  const OrganizationInitial() : super();
+}
 
+class OrganizationLoading extends OrganizationState {
+  const OrganizationLoading() : super();
+}
 
-class ChangeTheCurruntOrganization extends OrganizationState {
-  final Organization curruntOrgaization;
-  ChangeTheCurruntOrganization({required this.curruntOrgaization});
+class OrganizationLoaded extends OrganizationState {
+  OrganizationLoaded(List<Organization> orgs, {super.currentOrg})
+    : super(organizations: orgs);
 }
 
 class OrganizationFailure extends OrganizationState {
   final String message;
-  OrganizationFailure(this.message);
+  const OrganizationFailure(this.message) : super();
 }

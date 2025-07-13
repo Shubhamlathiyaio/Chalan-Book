@@ -1,5 +1,3 @@
-import 'package:chalan_book_app/bloc/home/home_bloc.dart';
-import 'package:chalan_book_app/bloc/home/home_event.dart';
 import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
 import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/core/constants/app_keys.dart';
@@ -149,7 +147,7 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
 
   void _selectAndNavigateToOrganization(Organization org) {
     context.read<OrganizationBloc>().add(SelectOrganization(org));
-    context.read<HomeBloc>().add(LoadOrganizations(org)); // ✅ Refresh home data
+    // context.read<OrganizationBloc>().add(LoadOrganizationsRequested(org)); // ✅ Refresh home data
   }
 
   void _navigateToCreateOrganization() async {

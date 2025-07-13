@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../core/models/chalan.dart';
 
 class ChalanDetailPage extends StatelessWidget {
@@ -214,12 +218,23 @@ class ChalanDetailPage extends StatelessWidget {
     );
   }
 
-  void _shareChalan() {
-    final text = 'Chalan: ${chalan.chalanNumber}\n'
-        'Description: ${chalan.description}\n'
-        'Date: ${_formatDate(chalan.dateTime)}';
-    
-    Share.share(text);
+  Future<void> _shareChalan() async {
+    if (chalan.imageUrl == null) return;
+
+    try {
+      final uri = Uri.parse(chalan.imageUrl!);
+      final response = await NetworkAssetBundle(uri).load(uri.path);
+      final bytes = response.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final fileExtension = uri.path.endsWith('.png') ? 'png' : 'jpg';
+      final file = await File('${tempDir.path}/chalan_image.$fileExtension').create();
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles([XFile(file.path)]);  // text: 'Chalan Image'
+    } catch (e) {
+      // Handle error (e.g., show a snackbar)
+    }
   }
 
   String _formatDate(DateTime date) {

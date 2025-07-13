@@ -1,5 +1,5 @@
-import 'package:chalan_book_app/bloc/home/home_bloc.dart';
-import 'package:chalan_book_app/bloc/home/home_event.dart';
+import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
+import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/theme/theme_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,8 +29,8 @@ class _SplashPageState extends State<SplashPage> {
       if (session != null) {
         context.pushReplacement(
           BlocProvider(
-            create: (_) => HomeBloc(
-            )..add(LoadOrganizations()),
+            create: (_) => OrganizationBloc(
+            )..add(LoadOrganizationsRequested()),
             child: const HomePage(),
           ),
         );

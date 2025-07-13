@@ -1,19 +1,22 @@
-import 'package:chalan_book_app/core/models/organization.dart';
+// import 'package:chalan_book_app/core/models/organization.dart';
 
-abstract class HomeState {}
+// abstract class OrganizationState {}
 
-class HomeInitial extends HomeState {}
+// class OrganizationInitial extends OrganizationState {}
 
-class HomeLoading extends HomeState {}
+// class OrganizationLoading extends OrganizationState {}
 
-class HomeLoaded extends HomeState {
-  final List<Organization> organizations;
-  final Organization currentOrganization;
+// class OrganizationLoaded extends OrganizationState {
+//   final List<Organization> organizations;
+//   final Organization currentOrganization;
 
-  HomeLoaded({required this.organizations, required this.currentOrganization});
-}
+//   OrganizationLoaded({
+//     required this.organizations,
+//     required this.currentOrganization,
+//   });
+// }
 
-class HomeError extends HomeState {
-  final String message;
-  HomeError(this.message);
-}
+// class OrganizationError extends OrganizationState {
+//   final String message;
+//   OrganizationError(this.message);
+// }

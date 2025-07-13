@@ -1,15 +1,10 @@
-import 'package:chalan_book_app/core/models/organization.dart';
+// import 'package:chalan_book_app/core/models/organization.dart';
 
-abstract class HomeEvent {}
+// abstract class OrganizationEvent {}
 
-class LoadOrganizations extends HomeEvent {
-  final Organization? org;
-  LoadOrganizations([this.org]);
-}
+// class LoadOrganizations extends OrganizationEvent {}
 
-class HomeInitalEvent extends HomeEvent {}
-
-class ChangeTab extends HomeEvent {
-  final int newIndex;
-  ChangeTab(this.newIndex);
-}
+// class ChangeOrganization extends OrganizationEvent {
+//   final Organization organization;
+//   ChangeOrganization(this.organization);
+// }

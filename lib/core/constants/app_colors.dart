@@ -4,7 +4,7 @@ class AppColors {
   static const primary = Color(0xFF0050AC);
   static const onPrimary = Colors.white;
 
-  static const secondaryOfLight = Color(0xFFFFA500);
+  static const secondaryOfLight = Color(0xff000000);
   static const onSecondary = Color(0xFF202020);
 
   static const surfaceOfLight = Color(0xFFFFFFFF);

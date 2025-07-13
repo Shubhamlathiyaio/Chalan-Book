@@ -1,8 +1,10 @@
 import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
 import 'package:chalan_book_app/bloc/auth/auth_event.dart';
 import 'package:chalan_book_app/bloc/auth/auth_state.dart';
-import 'package:chalan_book_app/bloc/home/home_bloc.dart';
+import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
 import 'package:chalan_book_app/bloc/home/home_event.dart';
+import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
+import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/features/auth/views/signup_page.dart';
 import 'package:chalan_book_app/features/home/views/home_page.dart';
@@ -30,7 +32,7 @@ class LoginPage extends StatelessWidget {
               if (state is AuthSuccess) {
                 context.pushReplacement(
                   BlocProvider(
-                    create: (_) => HomeBloc()..add(LoadOrganizations()),
+                    create: (_) => OrganizationBloc()..add(LoadOrganizationsRequested()),
                     child: const HomePage(),
                   ),
                 );
@@ -75,7 +77,7 @@ class LoginPage extends StatelessWidget {
             },
           ),
         ),
-      ),
+      ),    
     );
   }
 }

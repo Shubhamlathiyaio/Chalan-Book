@@ -1,5 +1,5 @@
 import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
-import 'package:chalan_book_app/bloc/home/home_bloc.dart';
+import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
 import 'package:chalan_book_app/bloc/nav_bar_cubit.dart';
 import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
 import 'package:chalan_book_app/bloc/organization_invite/organization_invite_bloc.dart';
@@ -33,31 +33,31 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (_, child) {
-        return MultiBlocProvider(
-          providers: [
-            BlocProvider<OrganizationBloc>(
-              create: (context) => OrganizationBloc(),
-            ),
-            BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
-            BlocProvider<HomeBloc>(
-              create: (context) => HomeBloc(              ),
-            ),
-            BlocProvider<OrganizationInviteBloc>(
-              create: (context) => OrganizationInviteBloc(),
-            ),
-            BlocProvider(create: (_) => NavBarCubit()),
-          ],
-          child: MaterialApp(
-            title: AppStrings.appName,
-            theme: AppTheme.lightTheme,
-            home: const SplashPage(),
-            debugShowCheckedModeBanner: false,
-          ),
-        );
-      },
+    return MultiBlocProvider(
+      providers: blocProviders,
+      child: MaterialApp(
+        title: AppStrings.appName,
+        theme: AppTheme.lightTheme,
+        home: const SplashPage(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
+
+  );
+  }
 }
+
+// We will rename a to aBlocProviders for clarity
+final blocProviders = [
+  BlocProvider<NavBarCubit>(create: (_) => NavBarCubit()),
+  BlocProvider<OrganizationBloc>(create: (context) => OrganizationBloc()),
+  BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+  BlocProvider<ChalanBloc>(create: (context) => ChalanBloc(organizationBloc: context.read<OrganizationBloc>())),
+  BlocProvider<OrganizationInviteBloc>(
+    create: (context) => OrganizationInviteBloc(),
+  ),
+];
 
 extension ContextExtension on BuildContext {
   void showSnackBar(String message, {bool isError = false}) {

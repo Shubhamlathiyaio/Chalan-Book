@@ -68,4 +68,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthFailure('Unexpected error'));
     }
   }
+
+  
+  @override
+  void onChange(Change<AuthState> change) {
+    super.onChange(change);
+    print('AuthBloc change: $change');
+  }
+
+  @override
+  void onTransition(Transition<AuthEvent, AuthState> transition) {
+    print('AuthBloc transition: $transition');
+    super.onTransition(transition);
+  }
 }

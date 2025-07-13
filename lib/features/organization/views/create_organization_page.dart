@@ -46,12 +46,11 @@ class _CreateOrganizationPageState extends State<CreateOrganizationPage> {
       appBar: AppBar(title: const Text(AppStrings.createOrganization)),
       body: BlocConsumer<OrganizationBloc, OrganizationState>(
         listener: (context, state) {
-          if (state is OrganizationCreatedSuccess) {
-            context.showSnackBar('✅ Organization created successfully!');
-            Navigator.pop(context, true);
-          } else if (state is OrganizationFailure) {
+          if (state is OrganizationFailure) {
             context.showSnackBar('❌ ${state.message}', isError: true);
           }
+          context.showSnackBar('✅ Organization created successfully!');
+            Navigator.pop(context, true);
         },
         builder: (context, state) {
           final isLoading = state is OrganizationLoading;

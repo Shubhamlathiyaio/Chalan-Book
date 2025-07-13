@@ -1,5 +1,4 @@
 import 'package:chalan_book_app/core/constants/app_colors.dart';
-import 'package:chalan_book_app/theme/text_theme.dart';
 import 'package:flutter/material.dart';
 
 class AppTheme {
@@ -22,7 +21,7 @@ class AppTheme {
       onSurface: AppColors.secondaryOfLight,
       // tertiary: AppColors.textFieldLableOfLight
     ),
-    textTheme: AppTextTheme.appTextThemeLight,
+    // textTheme: AppTextTheme.appTextThemeLight,
   );
 
   // ThemeData darkTheme = ThemeData(

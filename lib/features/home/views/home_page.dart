@@ -1,14 +1,14 @@
-import 'package:chalan_book_app/bloc/home/home_bloc.dart';
-import 'package:chalan_book_app/bloc/home/home_event.dart';
-import 'package:chalan_book_app/bloc/home/home_state.dart';
-import 'package:chalan_book_app/bloc/nav_bar_cubit.dart';
-import 'package:chalan_book_app/core/constants/strings.dart';
-import 'package:chalan_book_app/features/auth/views/splash_page.dart';
+import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
+import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
+import 'package:chalan_book_app/bloc/organization/organization_event.dart';
+import 'package:chalan_book_app/bloc/organization/organization_state.dart';
 import 'package:chalan_book_app/features/organization/views/chalan_list_page.dart';
-import 'package:chalan_book_app/features/organization/views/organization_list_page.dart';
-import 'package:chalan_book_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../organization/views/organization_list_page.dart';
+import '../../../shared/widgets/organization_selector.dart';
+import '../../auth/views/splash_page.dart';
+import '../../../main.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,66 +18,55 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    final navBar = context.watch<NavBarCubit>();
-    return BlocBuilder<HomeBloc, HomeState>(
-      builder: (context, state) {
-        if (state is HomeLoading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (state is HomeError) {
-          return Scaffold(body: Center(child: Text(state.message)));
-        }
-
-        if (state is HomeLoaded) {
-          final currentOrganization = state.currentOrganization;
-
+    return MultiBlocProvider(
+      providers: [
+        // ✅ Provide OrganizationBloc first
+        BlocProvider(
+          create: (context) => OrganizationBloc()..add(LoadOrganizationsRequested()),
+        ),
+        // ✅ Then provide ChalanBloc that depends on OrganizationBloc
+        BlocProvider(
+          create: (context) => ChalanBloc(
+            organizationBloc: context.read<OrganizationBloc>(),
+          ),
+        ),
+      ],
+      child: BlocBuilder<OrganizationBloc, OrganizationState>(
+        builder: (context, orgState) {
           final pages = [
-            ChalanListPage(organization: currentOrganization),
+            ChalanListView(organization: orgState.currentOrg),
             OrganizationListPage(
               onOrganizationCreated: () {
-                context.read<HomeBloc>().add(LoadOrganizations());
+                context.read<OrganizationBloc>().add(LoadOrganizationsRequested());
               },
             ),
           ];
 
           return Scaffold(
             appBar: AppBar(
-              title: Text(currentOrganization.name),
+              title: Text(orgState.currentOrg?.name ?? 'Chalan Book'),
               actions: [
-                // if (organizations.isNotEmpty)
-                //   OrganizationSelector(
-                //     organizations: organizations,
-                //     currentOrganization: currentOrganization,
-                //     onOrganizationChanged: (org) {
-                //       final selectedOrg = context.read<OrganizationSelectionCubit>().state.selectedOrganization;
-                //       context.read<HomeBloc>().add(ChangeOrganization(org));
-                //     },
-                //   ),
+                if (orgState.organizations.isNotEmpty)
+                  OrganizationSelector(
+                    organizations: orgState.organizations,
+                    currentOrganization: orgState.currentOrg,
+                    onOrganizationChanged: (org) {
+                      context.read<OrganizationBloc>().add(SelectOrganization(org));
+                    },
+                  ),
                 PopupMenuButton(
                   itemBuilder: (_) => [
                     PopupMenuItem(
-                      onTap: () async {
-                        await supabase.auth.signOut();
-                        if (context.mounted) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SplashPage(),
-                            ),
-                          );
-                        }
-                      },
+                      onTap: _logout,
                       child: const Row(
                         children: [
                           Icon(Icons.logout),
                           SizedBox(width: 8),
-                          Text('Logout'),
+                          Text('Logout')
                         ],
                       ),
                     ),
@@ -85,32 +74,34 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            body: IndexedStack(index: navBar.state, children: pages),
+            body: IndexedStack(index: _currentIndex, children: pages),
             bottomNavigationBar: BottomNavigationBar(
-              currentIndex: navBar.state,
-              onTap: (i) {
-                if (i == 1) {
-                  context.read<HomeBloc>().add(LoadOrganizations());
-                }
-                context.read<NavBarCubit>().updateTab(i);
-              },
-
+              currentIndex: _currentIndex,
+              onTap: (i) => setState(() => _currentIndex = i),
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.receipt_long),
-                  label: AppStrings.chalans,
+                  label: 'Chalans',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.business),
-                  label: AppStrings.organizations,
+                  label: 'Organizations',
                 ),
               ],
             ),
           );
-        }
-
-        return const SizedBox.shrink();
-      },
+        },
+      ),
     );
+  }
+
+  void _logout() async {
+    await supabase.auth.signOut();
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const SplashPage()),
+      );
+    }
   }
 }
