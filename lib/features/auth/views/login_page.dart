@@ -1,8 +1,6 @@
 import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
 import 'package:chalan_book_app/bloc/auth/auth_event.dart';
 import 'package:chalan_book_app/bloc/auth/auth_state.dart';
-import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
-import 'package:chalan_book_app/bloc/home/home_event.dart';
 import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
 import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';

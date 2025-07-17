@@ -150,39 +150,40 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
                       const SizedBox(height: 24),
 
                       // Add Member Section
-                      const Text(
-                        AppStrings.addMember,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              CustomTextField(
-                                controller: _emailController,
-                                label: AppStrings.memberEmail,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: LoadingButton(
-                                  onPressed: _sendInvite,
-                                  isLoading: _isInviting,
-                                  text: AppStrings.invite,
-                                ),
-                              ),
-                            ],
+                      if (widget.organization.ownerId == supabase.auth.currentUser?.id) ...[
+                        const Text(
+                          AppStrings.addMember,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                CustomTextField(
+                                  controller: _emailController,
+                                  label: AppStrings.memberEmail,
+                                  keyboardType: TextInputType.emailAddress,
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: LoadingButton(
+                                    onPressed: _sendInvite,
+                                    isLoading: _isInviting,
+                                    text: AppStrings.invite,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
 
                       // Members List
                       BlocBuilder<

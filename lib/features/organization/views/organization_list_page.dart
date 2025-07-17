@@ -1,10 +1,11 @@
 import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
 import 'package:chalan_book_app/bloc/organization/organization_event.dart';
+import 'package:chalan_book_app/core/configs/app_typography.dart';
+import 'package:chalan_book_app/core/constants/app_colors.dart';
 import 'package:chalan_book_app/core/constants/app_keys.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/features/organization/views/organization_detail_page.dart';
 import 'package:chalan_book_app/shared/widgets/format_date.dart';
-import 'package:chalan_book_app/theme/theme_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/organization.dart';
@@ -108,34 +109,36 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
               final org = _organizations[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blue,
-                    child: Text(
-                      org.name[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  title: Text(
-                    org.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (org.description != null) Text(org.description!),
-                      Text(
-                        'Created ${formatDate(org.createdAt)}',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                child: Stack(
+                  children: [
+                    ListTile(onTap: ()=>Navigator.push(context, MaterialPageRoute(builder: (context) => OrganizationDetailPage(organization: org),)),
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue,
+                        child: Text(
+                          org.name[0].toUpperCase(),
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ],
-                  ),
-                  trailing: IconButton(
-                    onPressed: () => _selectAndNavigateToOrganization(org),
-                    icon: Icon(Icons.swap_horiz, size: 30),
-                  ), // 🔁 switch icon
-                  onTap: () =>
-                      context.push(OrganizationDetailPage(organization: org)),
+                      title: Text(
+                        org.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (org.description != null) Text(org.description!),
+                          Text(
+                            'Created ${formatDate(org.createdAt)}',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                 Positioned(top: 0,right: 0,child: Padding(
+                   padding: const EdgeInsets.all(8.0),
+                   child: Text(supabase.auth.currentUser?.id==org.ownerId?"Owned":"Joined",style: poppins.w400.fs10 .textColor(supabase.auth.currentUser?.id==org.ownerId?AppColors.xff725ddb:AppColors.xff33a752),),
+                 ))
+                  ],
                 ),
               );
             },

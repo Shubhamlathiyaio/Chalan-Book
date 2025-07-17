@@ -2,7 +2,7 @@ import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
 import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
 import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/bloc/organization/organization_state.dart';
-import 'package:chalan_book_app/features/organization/views/chalan_list_page.dart';
+import 'package:chalan_book_app/features/filter/advanced-chalan_list-page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../organization/views/organization_list_page.dart';
@@ -38,7 +38,7 @@ class _HomePageState extends State<HomePage> {
       child: BlocBuilder<OrganizationBloc, OrganizationState>(
         builder: (context, orgState) {
           final pages = [
-            ChalanListView(organization: orgState.currentOrg),
+            AdvancedChalanListPage(organization: orgState.currentOrg),
             OrganizationListPage(
               onOrganizationCreated: () {
                 context.read<OrganizationBloc>().add(LoadOrganizationsRequested());

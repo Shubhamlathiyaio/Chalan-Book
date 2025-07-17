@@ -14,6 +14,7 @@ class AppStrings {
   static const String chalans = 'Chalans';
   static const String addChalan = 'Add Chalan';
   static const String chalanNumber = 'Chalan Number';
+  static const String chalanNo = 'Chalan No';
   static const String description = 'Description';
   static const String selectImage = 'Select Image';
   static const String camera = 'Camera';

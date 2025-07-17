@@ -5,6 +5,7 @@ import 'package:chalan_book_app/core/models/organization.dart';
 import 'package:chalan_book_app/main.dart';
 import 'package:chalan_book_app/shared/widgets/organization_selector.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
@@ -15,7 +16,16 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
     on<CreateOrganizationRequested>(_onCreateOrganization);
     on<LoadOrganizationsRequested>(_onLoadOrganizations);
     on<SelectOrganization>(_onSelectOrganization);
+
+    _initializeCache();
   }
+
+  void _initializeCache() {
+    if (state.currentOrg == null) {
+      // add(SelectOrganization(currentOrganization))
+    }
+  }
+
   Future<void> _onCreateOrganization(
     CreateOrganizationRequested event,
     Emitter<OrganizationState> emit,
@@ -81,30 +91,47 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
           )
           .toList();
 
+      // 👇 Load selected org ID from cache
+      if(orgs.isNotEmpty){
+    final prefs = await SharedPreferences.getInstance();
+    final cachedId = prefs.getString(selectedOrgId);
+    final selectedOrg = orgs.firstWhere(
+      (org) => org.id == cachedId,
+      orElse: () => orgs.first,
+    );
+    return emit(OrganizationLoaded(orgs, currentOrg: selectedOrg));
+    }
+    return emit(OrganizationLoaded(orgs));
 
-      emit(OrganizationLoaded(orgs));
     } catch (e) {
       emit(OrganizationFailure(e.toString()));
     }
   }
 
- _onSelectOrganization(
-  SelectOrganization event,
-  Emitter<OrganizationState> emit,
-) {
-  // ✅ Fix: Keep existing organizations and update current org
-  if (state is OrganizationLoaded) {
-    final currentState = state as OrganizationLoaded;
-    emit(OrganizationLoaded(
-      currentState.organizations,
-      currentOrg: event.currentOrganization,
-    ));
-  } else {
-    emit(OrganizationState(currentOrg: event.currentOrganization));
-  }
-}
+  _onSelectOrganization(
+    SelectOrganization event,
+    Emitter<OrganizationState> emit,
+  ) async {
+    // Save selected organization ID to cache
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(selectedOrgId, event.currentOrganization.id);
 
-  
+    // ✅ Fix: Keep existing organizations and update current org
+    if (state is OrganizationLoaded) {
+      final currentState = state as OrganizationLoaded;
+      emit(
+        OrganizationLoaded(
+          currentState.organizations,
+          currentOrg: event.currentOrganization,
+        ),
+      );
+    }
+    // The else part will be called
+    else {
+      emit(OrganizationState(currentOrg: event.currentOrganization));
+    }
+  }
+
   @override
   void onChange(Change<OrganizationState> change) {
     super.onChange(change);
@@ -112,7 +139,9 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
   }
 
   @override
-  void onTransition(Transition<OrganizationEvent, OrganizationState> transition) {
+  void onTransition(
+    Transition<OrganizationEvent, OrganizationState> transition,
+  ) {
     print('OrganizationBloc transition: $transition');
     super.onTransition(transition);
   }

@@ -191,3 +191,33 @@ extension SuperBorder on Border {
   Border get horizontal9 => _horizontal(9);
   Border get horizontal10 => _horizontal(10);
 }
+
+// How to use above class
+// Border border = Border.all(1);
+// Border border = Border.v5;
+// Border border = Border.r5.t5;
+
+
+
+/*
+
+Here one problem when search any number(chalanNumber) and that number also be in the date like 1,2,5 and 6 is be in also these dates(Where the chalan made) 15/7/2025 and 16/7/2025. 
+In this case I can't search chalans who's chalan number is 1,2,5 or 6.
+solution
+when user search only number it is the chalan number but if user also use "/" or "-" then it is the date. so we can't search chalan number.
+Last saved/added chalan at top of all the chalan
+
+And here use also add the below 20, 20-80 and Above 80 that's gust an example, we can add any number of chalan there will two text field in side the bottom sheet like the image there is dollar but we need the chalanNumber.
+in first time both will empty when user add chalan number in first field for ex. 20 then all that above 20 like 20, 21, 22 ... so on the chalan will appard only apply fildter button in the bottom sheet.
+when user add only second field for ex. 80 then all that below 80 like 1,2,3,...,80.
+when user add both field then all that chalan number between 20 to 80 the chalan will appear only apply filter button in the bottom sheet those will 20,21,22...80.
+I think you understand 20 and 80 are just an example.
+
+now we had put all the filters in the bottom sheet insted of body/appbar. There only one button filler on that button click we will show the bottom sheet with all the filters.
+
+On more thing there date filter like the chalan number(to ... ,to - from, ...form), there will be the date picker insted of the text field
+
+and all time the latest chalan well be top.
+also add a filter for asentdin and dissentinf arrow right side of the fiter button. both(filter and up/douwn arrow button) buttons right side of the search test filed no both button no bgcolor but with butiful ui like grey radiused border.
+
+*/

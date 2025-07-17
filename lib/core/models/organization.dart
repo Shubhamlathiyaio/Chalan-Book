@@ -4,6 +4,7 @@ class Organization {
   final String? description;
   final String ownerId;
   final DateTime createdAt;
+  final int currentChalanNumber;
 
   Organization({
     required this.id,
@@ -11,6 +12,7 @@ class Organization {
     this.description,
     required this.ownerId,
     required this.createdAt,
+    required this.currentChalanNumber,
   });
 
   factory Organization.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class Organization {
       description: json['description'] as String?,
       ownerId: json['owner_id'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      currentChalanNumber: json['current_chalan_number'] as int? ?? 1,
     );
   }
 
@@ -30,6 +33,7 @@ class Organization {
       'description': description,
       'owner_id': ownerId,
       'created_at': createdAt.toIso8601String(),
+      'current_chalan_number': currentChalanNumber,
     };
   }
 }

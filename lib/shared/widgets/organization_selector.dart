@@ -1,3 +1,4 @@
+import 'package:chalan_book_app/theme/theme_extension.dart';
 import 'package:flutter/material.dart';
 import '../../core/models/organization.dart';
 
@@ -24,12 +25,12 @@ class OrganizationSelector extends StatelessWidget {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: context.theme.primaryColor,
                     radius: 12,
                     child: Text(
                       org.name[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.colors.onPrimary,
                         fontSize: 10,
                       ),
                     ),

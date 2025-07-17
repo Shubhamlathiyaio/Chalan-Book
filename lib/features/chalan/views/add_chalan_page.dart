@@ -13,12 +13,9 @@ import '../../../shared/widgets/loading_button.dart';
 class AddChalanPage extends StatefulWidget {
   final Organization organization;
   final Chalan? chalan; // If provided, this is an update operation
+  final int? nextChalanNumber;
 
-  const AddChalanPage({
-    super.key,
-    required this.organization,
-    this.chalan,
-  });
+  const AddChalanPage({super.key, required this.organization, this.chalan, this.nextChalanNumber});
 
   @override
   State<AddChalanPage> createState() => _AddChalanPageState();
@@ -29,7 +26,7 @@ class _AddChalanPageState extends State<AddChalanPage> {
   final _chalanNumberController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _imagePicker = ImagePicker();
-  
+
   File? _selectedImage;
   bool _isLoading = false;
   bool get _isUpdateMode => widget.chalan != null;
@@ -44,6 +41,9 @@ class _AddChalanPageState extends State<AddChalanPage> {
     if (_isUpdateMode && widget.chalan != null) {
       _chalanNumberController.text = widget.chalan!.chalanNumber;
       _descriptionController.text = widget.chalan!.description ?? '';
+    }else{
+      _chalanNumberController.text = "${widget.nextChalanNumber}";
+      print("widget.nextChalanNumber = ${widget.nextChalanNumber}");
     }
   }
 
@@ -98,10 +98,7 @@ class _AddChalanPageState extends State<AddChalanPage> {
               const SizedBox(height: 20),
               const Text(
                 'Select Image Source',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               Row(
@@ -142,16 +139,15 @@ class _AddChalanPageState extends State<AddChalanPage> {
 
     try {
       final chalanId = _isUpdateMode ? widget.chalan!.id : const Uuid().v4();
-      final fileName = '${chalanId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileName =
+          '${chalanId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final imageBytes = await _selectedImage!.readAsBytes();
 
       await supabase.storage
           .from(chalanImagesBucket)
           .uploadBinary(fileName, imageBytes);
 
-      return supabase.storage
-          .from(chalanImagesBucket)
-          .getPublicUrl(fileName);
+      return supabase.storage.from(chalanImagesBucket).getPublicUrl(fileName);
     } catch (e) {
       throw Exception('Failed to upload image: $e');
     }
@@ -170,98 +166,100 @@ class _AddChalanPageState extends State<AddChalanPage> {
     }
   }
 
- Future<void> _saveChalan() async {
-  print('0');
-  if (!_formKey.currentState!.validate()) return;
-  print('1');
+  Future<void> _saveChalan() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-  try {
-    final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-    print('2');
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
 
-    String? imageUrl;
-    if (_selectedImage != null) {
-      imageUrl = await _uploadImage();
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+
+      final chalanId = const Uuid().v4();
+      // 1. Get current chalan number from org
+      // final orgResponse = await supabase
+      //     .from(organizationsTable)
+      //     .select('current_chalan_number')
+      //     .eq('id', widget.organization.id)
+      //     .maybeSingle();
+      //
+      // if (orgResponse == null || orgResponse['current_chalan_number'] == null) {
+      //   throw Exception('Organization counter not found');
+      // }
+      //
+      // final nextChalanNumber = orgResponse['current_chalan_number'] as int;
+
+      // 2. Save new chalan
+      await supabase.from(chalansTable).insert({
+        'id': chalanId,
+        'chalan_number': _chalanNumberController.text,
+        'description': _descriptionController.text.trim(),
+        'image_url': imageUrl,
+        'date_time': DateTime.now().toIso8601String(),
+        'organization_id': widget.organization.id,
+        'created_by': user.id,
+      });
+
+      // 3. Increment chalan number in organization
+      // await supabase
+      //     .from(organizationsTable)
+      //     .update({'current_chalan_number': nextChalanNumber + 1})
+      //     .eq('id', widget.organization.id);
+      if (mounted) {
+        _showSnackBar('Chalan added successfully!');
+        Navigator.pop(context, true);
+      }
+    } catch (error) {
+      if (mounted) {
+        _showSnackBar('Error saving chalan: $error', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    print('3');
-
-    final chalanId = const Uuid().v4();
-    await supabase.from(chalansTable).insert({
-      'id': chalanId,
-      'chalan_number': _chalanNumberController.text.trim(),
-      'description': _descriptionController.text.trim(),
-      'image_url': imageUrl,
-      'date_time': DateTime.now().toIso8601String(),
-      'organization_id': widget.organization.id,
-      'created_by': user.id,
-    });
-
-    print('4');
-    if (mounted) {
-      _showSnackBar('Chalan added successfully!');
-      Navigator.pop(context, true);
-    }
-  } catch (error) {
-    if (mounted) {
-      _showSnackBar('Error saving chalan: $error', isError: true);
-    }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
   }
-}
 
+  Future<void> _updateChalan() async {
+    if (!_formKey.currentState!.validate()) return;
 
-Future<void> _updateChalan() async {
-  print('5');
-  if (!_formKey.currentState!.validate()) return;
-  print('6');
+    setState(() => _isLoading = true);
 
-  setState(() => _isLoading = true);
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
 
-  try {
-    final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-    print('7');
+      final updateData = {
+        'chalan_number': _chalanNumberController.text.trim(),
+        'description': _descriptionController.text.trim(),
+      };
 
-    final updateData = {
-      'chalan_number': _chalanNumberController.text.trim(),
-      'description': _descriptionController.text.trim(),
-    };
+      if (_selectedImage != null) {
+        final newImageUrl = await _uploadImage();
+        await _deleteOldImage(widget.chalan!.imageUrl);
+        updateData['image_url'] = newImageUrl!;
+      }
 
-    if (_selectedImage != null) {
-      print('8');
-      final newImageUrl = await _uploadImage();
-      await _deleteOldImage(widget.chalan!.imageUrl);
-      updateData['image_url'] = newImageUrl!;
+      await supabase
+          .from(chalansTable)
+          .update(updateData)
+          .eq('id', widget.chalan!.id);
+
+      if (mounted) {
+        _showSnackBar('Chalan updated successfully!');
+        Navigator.pop(context, true);
+      }
+    } catch (error) {
+      if (mounted) {
+        _showSnackBar('Error updating chalan: $error', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    print('9');
-
-    await supabase
-        .from(chalansTable)
-        .update(updateData)
-        .eq('id', widget.chalan!.id);
-
-    print('10');
-
-    if (mounted) {
-      _showSnackBar('Chalan updated successfully!');
-      Navigator.pop(context, true);
-    }
-  } catch (error) {
-    if (mounted) {
-      _showSnackBar('Error updating chalan: $error', isError: true);
-    }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
   }
-}
-
-
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -280,19 +278,8 @@ Future<void> _updateChalan() async {
           children: [
             const Text(
               'Image',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
-            if (!_isUpdateMode || _selectedImage != null || widget.chalan?.imageUrl == null)
-              const Text(
-                ' (Optional)',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
           ],
         ),
         const SizedBox(height: 12),
@@ -338,11 +325,7 @@ Future<void> _updateChalan() async {
                   color: Colors.black54,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
               ),
             ),
           ),
@@ -351,8 +334,9 @@ Future<void> _updateChalan() async {
     }
 
     // Show existing image (update mode)
-    if (_isUpdateMode && widget.chalan?.imageUrl != null && widget.chalan!.imageUrl!.isNotEmpty) {
-
+    if (_isUpdateMode &&
+        widget.chalan?.imageUrl != null &&
+        widget.chalan!.imageUrl!.isNotEmpty) {
       return Stack(
         children: [
           ClipRRect(
@@ -369,7 +353,10 @@ Future<void> _updateChalan() async {
                     children: [
                       Icon(Icons.broken_image, size: 48, color: Colors.grey),
                       SizedBox(height: 8),
-                      Text('Failed to load image', style: TextStyle(color: Colors.grey)),
+                      Text(
+                        'Failed to load image',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ],
                   ),
                 );
@@ -390,7 +377,10 @@ Future<void> _updateChalan() async {
                 children: [
                   Icon(Icons.edit, color: Colors.white, size: 16),
                   SizedBox(width: 4),
-                  Text('Change', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  Text(
+                    'Change',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -403,26 +393,16 @@ Future<void> _updateChalan() async {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.add_a_photo,
-          size: 48,
-          color: Colors.grey[600],
-        ),
+        Icon(Icons.add_a_photo, size: 48, color: Colors.grey[600]),
         const SizedBox(height: 8),
         Text(
           AppStrings.selectImage,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Colors.grey[600], fontSize: 16),
         ),
         const SizedBox(height: 4),
         Text(
           'Tap to add image',
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.grey[500], fontSize: 12),
         ),
       ],
     );
@@ -449,26 +429,17 @@ Future<void> _updateChalan() async {
               // Form Fields
               CustomTextField(
                 controller: _chalanNumberController,
-                label: AppStrings.chalanNumber,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter chalan number';
-                  }
-                  return null;
-                },
+                keyboardType: TextInputType.number,
+                label: AppStrings.chalanNo,
+                // I want to make the text field read-only for every.
               ),
+
               const SizedBox(height: 16),
-              
+
               CustomTextField(
                 controller: _descriptionController,
                 label: AppStrings.description,
                 maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter description';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 24),
 
@@ -508,7 +479,7 @@ Future<void> _updateChalan() async {
 
               // Save Button
               LoadingButton(
-                onPressed: _isUpdateMode ? _updateChalan :_saveChalan,
+                onPressed: _isUpdateMode ? _updateChalan : _saveChalan,
                 isLoading: _isLoading,
                 text: _isUpdateMode ? 'Update Chalan' : AppStrings.save,
               ),
@@ -546,15 +517,16 @@ class _ImageSourceButton extends StatelessWidget {
           children: [
             Icon(icon, size: 32, color: Colors.blue),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           ],
         ),
       ),
     );
   }
 }
+
+
+
+// command of the build release apk is
+// flutter build apk --release --split-per-abi
+// here the --split-per-abi flag is used to generate separate APKs for each ABI (Application Binary Interface) which can reduce the size of the APK and improve performance on different devices. This is particularly useful for apps that include native code or large assets, as it allows the app to be optimized for each specific architecture (like arm64-v8a, armeabi-v7a, x86_64, etc.).

@@ -1,3 +1,4 @@
+import 'package:chalan_book_app/bloc/advanced_filter/advanced_filter_bloc.dart';
 import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
 import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
 import 'package:chalan_book_app/bloc/nav_bar_cubit.dart';
@@ -54,6 +55,7 @@ final blocProviders = [
   BlocProvider<OrganizationBloc>(create: (context) => OrganizationBloc()),
   BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
   BlocProvider<ChalanBloc>(create: (context) => ChalanBloc(organizationBloc: context.read<OrganizationBloc>())),
+  BlocProvider<AdvancedChalanFilterBloc>(create: (context) => AdvancedChalanFilterBloc()),
   BlocProvider<OrganizationInviteBloc>(
     create: (context) => OrganizationInviteBloc(),
   ),

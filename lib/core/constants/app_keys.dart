@@ -10,3 +10,5 @@ const String chalanImagesBucket = 'images';
 const String organizationsTable = 'organizations';
 const String chalansTable = 'chalans';
 const String organizationUsersTable = 'organization_users';
+
+const String selectedOrgId = "selected_org_id";
