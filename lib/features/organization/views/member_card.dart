@@ -1,5 +1,5 @@
 import 'package:chalan_book_app/core/models/organization_member.dart';
-import 'package:chalan_book_app/shared/widgets/format_date.dart';
+import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
 import 'package:flutter/material.dart';
 
 class MemberCard extends StatelessWidget {

@@ -1,13 +1,14 @@
-import 'package:chalan_book_app/bloc/chalan/chalan_bloc.dart';
-import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
-import 'package:chalan_book_app/bloc/organization/organization_event.dart';
-import 'package:chalan_book_app/bloc/organization/organization_state.dart';
-import 'package:chalan_book_app/features/filter/advanced-chalan_list-page.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/features/filter/chalan_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../organization/views/organization_list_page.dart';
-import '../../../shared/widgets/organization_selector.dart';
 import '../../auth/views/splash_page.dart';
+import '../../organization/bloc/organization_bloc.dart';
+import '../../organization/views/organization_list_page.dart';
+import '../../profile/views/profile_page.dart';
+import '../../shared/bloc/nav_bar_cubit.dart';
+import '../../shared/widgets/app_drawer.dart';
+import '../../shared/widgets/organization_selector.dart';
 import '../../../main.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,81 +19,103 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
-
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        // ✅ Provide OrganizationBloc first
-        BlocProvider(
-          create: (context) => OrganizationBloc()..add(LoadOrganizationsRequested()),
-        ),
-        // ✅ Then provide ChalanBloc that depends on OrganizationBloc
-        BlocProvider(
-          create: (context) => ChalanBloc(
-            organizationBloc: context.read<OrganizationBloc>(),
-          ),
-        ),
-      ],
+    return BlocProvider(
+      create: (context) => NavBarCubit(),
       child: BlocBuilder<OrganizationBloc, OrganizationState>(
         builder: (context, orgState) {
-          final pages = [
-            AdvancedChalanListPage(organization: orgState.currentOrg),
-            OrganizationListPage(
-              onOrganizationCreated: () {
-                context.read<OrganizationBloc>().add(LoadOrganizationsRequested());
-              },
-            ),
-          ];
+          return BlocBuilder<NavBarCubit, int>(
+            builder: (context, currentIndex) {
+              final pages = [
+                ChalanListPage(
+                  organization: orgState.currentOrg,
+                ),
+                OrganizationListPage(
+                  onOrganizationCreated: () {
+                    context.read<OrganizationBloc>().add(LoadOrganizations());
+                  },
+                ),
+                const ProfilePage(),
+              ];
 
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(orgState.currentOrg?.name ?? 'Chalan Book'),
-              actions: [
-                if (orgState.organizations.isNotEmpty)
-                  OrganizationSelector(
-                    organizations: orgState.organizations,
-                    currentOrganization: orgState.currentOrg,
-                    onOrganizationChanged: (org) {
-                      context.read<OrganizationBloc>().add(SelectOrganization(org));
-                    },
-                  ),
-                PopupMenuButton(
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      onTap: _logout,
-                      child: const Row(
-                        children: [
-                          Icon(Icons.logout),
-                          SizedBox(width: 8),
-                          Text('Logout')
-                        ],
+              return Scaffold(
+                appBar: AppBar(
+                  title: Text(_getAppBarTitle(currentIndex, orgState)),
+                  backgroundColor: context.colors.surface,
+                  elevation: 0,
+                  scrolledUnderElevation: 1,
+                  actions: [
+                    if (orgState.organizations.isNotEmpty && currentIndex == 0)
+                      OrganizationSelector(
+                        organizations: orgState.organizations,
+                        currentOrganization: orgState.currentOrg,
+                        onOrganizationChanged: (org) {
+                          context.read<OrganizationBloc>().add(
+                            SelectOrganization(org),
+                          );
+                        },
                       ),
+                    PopupMenuButton(
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          onTap: _logout,
+                          child: const Row(
+                            children: [
+                              Icon(Icons.logout),
+                              SizedBox(width: 8),
+                              Text('Logout'),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            body: IndexedStack(index: _currentIndex, children: pages),
-            bottomNavigationBar: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (i) => setState(() => _currentIndex = i),
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.receipt_long),
-                  label: 'Chalans',
+                drawer: const AppDrawer(),
+                body: IndexedStack(index: currentIndex, children: pages),
+                bottomNavigationBar: NavigationBar(
+                  selectedIndex: currentIndex,
+                  onDestinationSelected: (index) {
+                    context.read<NavBarCubit>().updateTab(index);
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: 'Chalans',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.business_outlined),
+                      selectedIcon: Icon(Icons.business),
+                      label: 'Organizations',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: 'Profile',
+                    ),
+                  ],
                 ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.business),
-                  label: 'Organizations',
-                ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
     );
+  }
+
+  String _getAppBarTitle(int index, OrganizationState orgState) {
+    switch (index) {
+      case 0:
+        return orgState.currentOrg?.name ?? 'Chalan Book';
+      case 1:
+        return 'Organizations';
+      case 2:
+        return 'Profile';
+      default:
+        return 'Chalan Book';
+    }
   }
 
   void _logout() async {

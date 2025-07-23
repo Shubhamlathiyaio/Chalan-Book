@@ -1,12 +1,10 @@
-import 'package:chalan_book_app/main.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
+import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
+import 'package:chalan_book_app/features/shared/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../bloc/organization/organization_bloc.dart';
-import '../../../bloc/organization/organization_event.dart';
-import '../../../bloc/organization/organization_state.dart';
 import '../../../core/constants/strings.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/loading_button.dart';
 
 class CreateOrganizationPage extends StatefulWidget {
   const CreateOrganizationPage({super.key});
@@ -36,7 +34,7 @@ class _CreateOrganizationPageState extends State<CreateOrganizationPage> {
         : _descriptionController.text.trim();
 
     context.read<OrganizationBloc>().add(
-          CreateOrganizationRequested(name: name, description: desc),
+          CreateOrganization(name: name, description: desc),
         );
   }
 
@@ -46,10 +44,10 @@ class _CreateOrganizationPageState extends State<CreateOrganizationPage> {
       appBar: AppBar(title: const Text(AppStrings.createOrganization)),
       body: BlocConsumer<OrganizationBloc, OrganizationState>(
         listener: (context, state) {
-          if (state is OrganizationFailure) {
-            context.showSnackBar('❌ ${state.message}', isError: true);
+          if (state is OrganizationError) {
+            context.showSnackbar('❌ ${state.message}', isError: true);
           }
-          context.showSnackBar('✅ Organization created successfully!');
+          context.showSnackbar('✅ Organization created successfully!');
             Navigator.pop(context, true);
         },
         builder: (context, state) {

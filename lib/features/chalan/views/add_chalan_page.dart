@@ -1,21 +1,31 @@
 import 'dart:io';
+import 'package:chalan_book_app/core/configs/edge.dart';
+import 'package:chalan_book_app/core/configs/gap.dart';
 import 'package:chalan_book_app/core/constants/app_keys.dart';
-import 'package:chalan_book_app/core/constants/strings.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/core/models/chalan.dart';
+import 'package:chalan_book_app/core/models/organization.dart';
+import 'package:chalan_book_app/features/chalan/bloc/chalan_bloc.dart';
+import 'package:chalan_book_app/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import '../../../core/models/organization.dart';
-import '../../../core/models/chalan.dart';
-import '../../../main.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/loading_button.dart';
 
 class AddChalanPage extends StatefulWidget {
   final Organization organization;
-  final Chalan? chalan; // If provided, this is an update operation
-  final int? nextChalanNumber;
+  final List<Chalan> chalans;
+  final Chalan? chalan;
 
-  const AddChalanPage({super.key, required this.organization, this.chalan, this.nextChalanNumber});
+  const AddChalanPage({
+    super.key,
+    required this.organization,
+    required this.chalans,
+    this.chalan,
+  });
 
   @override
   State<AddChalanPage> createState() => _AddChalanPageState();
@@ -23,28 +33,57 @@ class AddChalanPage extends StatefulWidget {
 
 class _AddChalanPageState extends State<AddChalanPage> {
   final _formKey = GlobalKey<FormState>();
-  final _chalanNumberController = TextEditingController();
+  late final _chalanNumberController = TextEditingController();
+  late final FocusNode _chalanFocusNode;
+  List<int> _missingNumbers = [];
   final _descriptionController = TextEditingController();
   final _imagePicker = ImagePicker();
-
   File? _selectedImage;
   bool _isLoading = false;
-  bool get _isUpdateMode => widget.chalan != null;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _initializeFormData();
-  }
+    _chalanFocusNode = FocusNode();
 
-  void _initializeFormData() {
-    if (_isUpdateMode && widget.chalan != null) {
+    final chalanState = context.read<ChalanBloc>().state;
+    List<Chalan> existingChalans = chalanState is ChalanLoaded
+        ? chalanState.chalans
+        : [];
+    _missingNumbers = _calculateMissingNumbers(existingChalans);
+
+    if (widget.chalan != null) {
       _chalanNumberController.text = widget.chalan!.chalanNumber;
       _descriptionController.text = widget.chalan!.description ?? '';
-    }else{
-      _chalanNumberController.text = "${widget.nextChalanNumber}";
-      print("widget.nextChalanNumber = ${widget.nextChalanNumber}");
+      _selectedDate = widget.chalan!.dateTime;
+    } else {
+      _missingNumbers = _calculateMissingNumbers(widget.chalans);
+      _chalanNumberController.text = _missingNumbers.length == 1
+          ? "${_missingNumbers.first}"
+          : "";
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<ChalanBloc>().state;
+      if (state is ChalanLoaded) {
+        context.read<ChalanBloc>().add(LoadMissingChalanNumbers(state.chalans));
+      }
+    });
+  }
+
+  List<int> _calculateMissingNumbers(List<Chalan> chalans) {
+    final numbers = chalans
+        .map((c) => int.tryParse(c.chalanNumber))
+        .whereType<int>()
+        .toSet();
+    if (numbers.isEmpty) return [1];
+    final max = numbers.reduce((a, b) => a > b ? a : b);
+    final missing = <int>[];
+    for (int i = 1; i <= max + 1; i++) {
+      if (!numbers.contains(i)) missing.add(i);
+    }
+    return missing;
   }
 
   @override
@@ -54,434 +93,296 @@ class _AddChalanPageState extends State<AddChalanPage> {
     super.dispose();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 80,
-      );
-
-      if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
-      }
-    } catch (error) {
-      if (mounted) {
-        _showSnackBar('Error picking image: $error', isError: true);
-      }
-    }
-  }
-
-  void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Select Image Source',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ImageSourceButton(
-                      icon: Icons.camera_alt,
-                      label: AppStrings.camera,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _pickImage(ImageSource.camera);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _ImageSourceButton(
-                      icon: Icons.photo_library,
-                      label: AppStrings.gallery,
-                      onTap: () {
-                        Navigator.pop(context);
-                        _pickImage(ImageSource.gallery);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<String?> _uploadImage() async {
-    if (_selectedImage == null) return null;
-
-    try {
-      final chalanId = _isUpdateMode ? widget.chalan!.id : const Uuid().v4();
-      final fileName =
-          '${chalanId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final imageBytes = await _selectedImage!.readAsBytes();
-
-      await supabase.storage
-          .from(chalanImagesBucket)
-          .uploadBinary(fileName, imageBytes);
-
-      return supabase.storage.from(chalanImagesBucket).getPublicUrl(fileName);
-    } catch (e) {
-      throw Exception('Failed to upload image: $e');
-    }
-  }
-
-  Future<void> _deleteOldImage(String? oldImageUrl) async {
-    if (oldImageUrl == null || oldImageUrl.isEmpty) return;
-
-    try {
-      final uri = Uri.parse(oldImageUrl);
-      final fileName = uri.pathSegments.last;
-      await supabase.storage.from(chalanImagesBucket).remove([fileName]);
-    } catch (e) {
-      // Log error but don't throw - old image deletion failure shouldn't stop the update
-      debugPrint('Failed to delete old image: $e');
-    }
-  }
-
-  Future<void> _saveChalan() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final user = supabase.auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
-      String? imageUrl;
-      if (_selectedImage != null) {
-        imageUrl = await _uploadImage();
-      }
-
-      final chalanId = const Uuid().v4();
-      // 1. Get current chalan number from org
-      // final orgResponse = await supabase
-      //     .from(organizationsTable)
-      //     .select('current_chalan_number')
-      //     .eq('id', widget.organization.id)
-      //     .maybeSingle();
-      //
-      // if (orgResponse == null || orgResponse['current_chalan_number'] == null) {
-      //   throw Exception('Organization counter not found');
-      // }
-      //
-      // final nextChalanNumber = orgResponse['current_chalan_number'] as int;
-
-      // 2. Save new chalan
-      await supabase.from(chalansTable).insert({
-        'id': chalanId,
-        'chalan_number': _chalanNumberController.text,
-        'description': _descriptionController.text.trim(),
-        'image_url': imageUrl,
-        'date_time': DateTime.now().toIso8601String(),
-        'organization_id': widget.organization.id,
-        'created_by': user.id,
-      });
-
-      // 3. Increment chalan number in organization
-      // await supabase
-      //     .from(organizationsTable)
-      //     .update({'current_chalan_number': nextChalanNumber + 1})
-      //     .eq('id', widget.organization.id);
-      if (mounted) {
-        _showSnackBar('Chalan added successfully!');
-        Navigator.pop(context, true);
-      }
-    } catch (error) {
-      if (mounted) {
-        _showSnackBar('Error saving chalan: $error', isError: true);
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _updateChalan() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final user = supabase.auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
-      final updateData = {
-        'chalan_number': _chalanNumberController.text.trim(),
-        'description': _descriptionController.text.trim(),
-      };
-
-      if (_selectedImage != null) {
-        final newImageUrl = await _uploadImage();
-        await _deleteOldImage(widget.chalan!.imageUrl);
-        updateData['image_url'] = newImageUrl!;
-      }
-
-      await supabase
-          .from(chalansTable)
-          .update(updateData)
-          .eq('id', widget.chalan!.id);
-
-      if (mounted) {
-        _showSnackBar('Chalan updated successfully!');
-        Navigator.pop(context, true);
-      }
-    } catch (error) {
-      if (mounted) {
-        _showSnackBar('Error updating chalan: $error', isError: true);
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
-    );
-  }
-
-  Widget _buildImageSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Image',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: _showImageSourceDialog,
-          child: Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: _buildImageContent(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImageContent() {
-    // Show selected image (new or replacement)
-    if (_selectedImage != null) {
-      return Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(
-              _selectedImage!,
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedImage = null),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.close, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Show existing image (update mode)
-    if (_isUpdateMode &&
-        widget.chalan?.imageUrl != null &&
-        widget.chalan!.imageUrl!.isNotEmpty) {
-      return Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              widget.chalan!.imageUrl!,
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text(
-                        'Failed to load image',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.edit, color: Colors.white, size: 16),
-                  SizedBox(width: 4),
-                  Text(
-                    'Change',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Show placeholder (no image)
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.add_a_photo, size: 48, color: Colors.grey[600]),
-        const SizedBox(height: 8),
-        Text(
-          AppStrings.selectImage,
-          style: TextStyle(color: Colors.grey[600], fontSize: 16),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Tap to add image',
-          style: TextStyle(color: Colors.grey[500], fontSize: 12),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isUpdateMode ? 'Update Chalan' : AppStrings.addChalan),
+        title: const Text('Add New Chalan'),
+        backgroundColor: context.colors.surface,
         elevation: 0,
+        scrolledUnderElevation: 1,
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Image Section
-              _buildImageSection(),
-              const SizedBox(height: 24),
-
-              // Form Fields
-              CustomTextField(
-                controller: _chalanNumberController,
-                keyboardType: TextInputType.number,
-                label: AppStrings.chalanNo,
-                // I want to make the text field read-only for every.
-              ),
-
-              const SizedBox(height: 16),
-
-              CustomTextField(
-                controller: _descriptionController,
-                label: AppStrings.description,
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-
-              // Organization Info
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.business, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Organization',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              widget.organization.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+      body: BlocBuilder<ChalanBloc, ChalanState>(
+        builder: (context, state) {
+          return SingleChildScrollView(
+            padding: edge.all16,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () => _selectDate,
+                      child: Card(
+                        child: Padding(
+                          padding: edge.all4,
+                          child: Icon(Icons.calendar_today),
                         ),
                       ),
-                    ],
+                    ),
                   ),
+                  gap.h8,
+                  _buildDateButton(),
+                  gap.h8,
+                  
+                  _buildChalanNumberField(state),
+                  gap.h16,
+                  _buildDescriptionField(),
+                  
+                  gap.h16,
+                  BlocBuilder<ChalanBloc, ChalanState>(
+                    builder: (context, state) {
+                      if (state is ChalanLoaded) {
+                        return _buildImageSection(context, state.selectedImage);
+                      } else {
+                        return _buildImageSection(context, null);
+                      }
+                    },
+                  ),
+                  gap.h32,
+                  _buildSubmitButton(),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+
+Widget _buildDateButton(){
+  return BlocBuilder<ChalanBloc, ChalanState>(
+  builder: (context, state) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Card(
+        child: Padding(
+          padding: edge.all8,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                DateFormat('dd-MM-yyyy').format(state is ChalanLoaded ? state.selectedDate: DateTime.now()),
+                style: TextStyle(fontSize: 14.sp),
+              ),
+              SizedBox(width: 8.w),
+              GestureDetector(
+                onTap: () => _selectDate(),
+                child: Icon(Icons.calendar_today),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  },
+);
+
+}
+  Widget _buildChalanNumberField(ChalanState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Chalan Number',
+          style: context.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        gap.h8,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _chalanNumberController,
+              focusNode: _chalanFocusNode,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                hintText: 'Enter chalan number',
+                prefixIcon: const Icon(Icons.numbers),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(height: 32),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter chalan number';
+                }
+                final number = int.tryParse(value);
+                if (number == null || number <= 0) {
+                  return 'Please enter a valid number';
+                }
+                return null;
+              },
+              onChanged: (value) {
+                if (state is ChalanLoaded && state.selectedNumber != null) {
+                  context.read<ChalanBloc>().add(ClearSelectedNumber());
+                }
+              },
+            ),
+            if (_missingNumbers.length > 1) ...[
+              gap.h8,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _missingNumbers.map((number) {
+                  return GestureDetector(
+                    onTap: () {
+                      _chalanNumberController.text = number.toString();
+                      context.read<ChalanBloc>().add(
+                        SelectChalanNumber(number),
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: edge.h12.v6,
+                      decoration: BoxDecoration(
+                        color: context.colors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: context.colors.outline,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        number.toString(),
+                        style: context.textTheme.labelLarge?.copyWith(
+                          color: context.colors.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
 
-              // Save Button
-              LoadingButton(
-                onPressed: _isUpdateMode ? _updateChalan : _saveChalan,
-                isLoading: _isLoading,
-                text: _isUpdateMode ? 'Update Chalan' : AppStrings.save,
+  Widget _buildDescriptionField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Description (Optional)',
+          style: context.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        gap.h8,
+        TextFormField(
+          controller: _descriptionController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Enter description...',
+            prefixIcon: const Icon(Icons.description),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageSection(BuildContext context, File? imageFile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Chalan Image (Optional)',
+          style: context.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        gap.h8,
+        if (imageFile != null) ...[
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12.r),
+                child: Image.file(
+                  imageFile,
+                  height: 200.h,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                right: 8.w,
+                top: 8.h,
+                child: _iconActionButton(
+                  icon: Icons.close,
+                  onPressed: () =>
+                      context.read<ChalanBloc>().add(RemoveImage()),
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          Row(
+            children: [
+              _beautifulPickButton(
+                icon: Icons.photo_library,
+                label: 'Gallery',
+                onTap: () =>
+                    context.read<ChalanBloc>().add(PickImageFromGallery()),
+              ),
+              gap.w8,
+              _beautifulPickButton(
+                icon: Icons.camera_alt,
+                label: 'Camera',
+                onTap: () =>
+                    context.read<ChalanBloc>().add(PickImageFromCamera()),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _beautifulPickButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 100.h,
+          padding: EdgeInsets.all(12.r),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 28.sp, color: Colors.black87),
+              SizedBox(height: 8.h),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -489,44 +390,90 @@ class _AddChalanPageState extends State<AddChalanPage> {
       ),
     );
   }
-}
 
-class _ImageSourceButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ImageSourceButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: Colors.blue),
-            const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          ],
-        ),
+  Widget _iconActionButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return CircleAvatar(
+      backgroundColor: Colors.black54,
+      child: IconButton(
+        icon: Icon(icon, color: Colors.white),
+        onPressed: onPressed,
       ),
     );
   }
+
+  Widget _buildSubmitButton() {
+    return BlocBuilder<ChalanBloc, ChalanState>(
+      builder: (context, state) {
+        final isLoading = _isLoading || state is ChalanLoading;
+        return FilledButton(
+          onPressed: isLoading ? null : _submitChalan,
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text(
+                  'Add Chalan',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+        );
+      },
+    );
+  }
+
+  Future<void> _selectDate() async {
+    print("From _selectDate");
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date != null) {
+      setState(() => _selectedDate = date);
+    }
+  }
+  Future<void> _submitChalan() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      String? imageUrl;
+      if (_selectedImage != null) {
+        final fileName = '${const Uuid().v4()}.jpg';
+        await supabase.storage
+            .from(chalanImagesBucket)
+            .upload(fileName, _selectedImage!);
+        imageUrl = supabase.storage
+            .from(chalanImagesBucket)
+            .getPublicUrl(fileName);
+      }
+      final chalan = Chalan(
+        id: const Uuid().v4(),
+        organizationId: widget.organization.id,
+        createdBy: supabase.auth.currentUser!.id,
+        chalanNumber: _chalanNumberController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        imageUrl: imageUrl,
+        dateTime: _selectedDate,
+      );
+      context.read<ChalanBloc>().add(AddChalanEvent(chalan));
+      Navigator.pop(context);
+    } catch (e) {
+      context.showSnackbar('Error creating chalan: $e', isError: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 }
-
-
-
-// command of the build release apk is
-// flutter build apk --release --split-per-abi
-// here the --split-per-abi flag is used to generate separate APKs for each ABI (Application Binary Interface) which can reduce the size of the APK and improve performance on different devices. This is particularly useful for apps that include native code or large assets, as it allows the app to be optimized for each specific architecture (like arm64-v8a, armeabi-v7a, x86_64, etc.).

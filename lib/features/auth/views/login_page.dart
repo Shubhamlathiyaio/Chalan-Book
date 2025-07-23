@@ -1,14 +1,13 @@
-import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
-import 'package:chalan_book_app/bloc/auth/auth_event.dart';
-import 'package:chalan_book_app/bloc/auth/auth_state.dart';
-import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
-import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_event.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_state.dart';
 import 'package:chalan_book_app/features/auth/views/signup_page.dart';
 import 'package:chalan_book_app/features/home/views/home_page.dart';
-import 'package:chalan_book_app/shared/widgets/custom_text_field.dart';
-import 'package:chalan_book_app/shared/widgets/loading_button.dart';
-import 'package:chalan_book_app/theme/theme_extension.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
+import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
+import 'package:chalan_book_app/features/shared/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -29,10 +28,12 @@ class LoginPage extends StatelessWidget {
             listener: (_, state) {
               if (state is AuthSuccess) {
                 context.pushReplacement(
-                  BlocProvider(
-                    create: (_) => OrganizationBloc()..add(LoadOrganizationsRequested()),
-                    child: const HomePage(),
-                  ),
+                  // BlocProvider(
+                  //   create: (_) =>
+                  //       OrganizationBloc()..add(LoadOrganizationsRequested()),
+                  // ),
+                    // child:
+                     const HomePage(),
                 );
               }
               if (state is AuthFailure) (msg) => context.showSnackbar(msg);
@@ -75,7 +76,7 @@ class LoginPage extends StatelessWidget {
             },
           ),
         ),
-      ),    
+      ),
     );
   }
 }
@@ -92,13 +93,13 @@ class _Header extends StatelessWidget {
       const SizedBox(height: 24),
       Text(
         AppStrings.appName,
-        style: context.h1.copyWith(color: Colors.blue),
+        style: context.h1?.copyWith(color: Colors.blue),
         textAlign: TextAlign.center,
       ),
       const SizedBox(height: 8),
       Text(
         'Welcome back!',
-        style: context.body2.copyWith(color: Colors.grey[600]),
+        style: context.body2?.copyWith(color: Colors.grey[600]),
         textAlign: TextAlign.center,
       ),
     ],

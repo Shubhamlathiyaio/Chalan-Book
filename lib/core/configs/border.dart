@@ -162,34 +162,34 @@ extension SuperBorder on Border {
   //----------------------------------------------------------------------------
   // Vertical
   //----------------------------------------------------------------------------
-  Border get vertical01 => _vertical(0.1);
-  Border get vertical05 => _vertical(0.5);
-  Border get vertical => _vertical(1);
-  Border get vertical2 => _vertical(2);
-  Border get vertical3 => _vertical(3);
-  Border get vertical4 => _vertical(4);
-  Border get vertical5 => _vertical(5);
-  Border get vertical6 => _vertical(6);
-  Border get vertical7 => _vertical(7);
-  Border get vertical8 => _vertical(8);
-  Border get vertical9 => _vertical(9);
-  Border get vertical10 => _vertical(10);
+  Border get v01 => _vertical(0.1);
+  Border get v05 => _vertical(0.5);
+  Border get v => _vertical(1);
+  Border get v2 => _vertical(2);
+  Border get v3 => _vertical(3);
+  Border get v4 => _vertical(4);
+  Border get v5 => _vertical(5);
+  Border get v6 => _vertical(6);
+  Border get v7 => _vertical(7);
+  Border get v8 => _vertical(8);
+  Border get v9 => _vertical(9);
+  Border get v10 => _vertical(10);
 
   //----------------------------------------------------------------------------
   // Horizontal
   //----------------------------------------------------------------------------
-  Border get horizontal01 => _horizontal(0.1);
-  Border get horizontal05 => _horizontal(0.5);
-  Border get horizontal => _horizontal(1);
-  Border get horizontal2 => _horizontal(2);
-  Border get horizontal3 => _horizontal(3);
-  Border get horizontal4 => _horizontal(4);
-  Border get horizontal5 => _horizontal(5);
-  Border get horizontal6 => _horizontal(6);
-  Border get horizontal7 => _horizontal(7);
-  Border get horizontal8 => _horizontal(8);
-  Border get horizontal9 => _horizontal(9);
-  Border get horizontal10 => _horizontal(10);
+  Border get h01 => _horizontal(0.1);
+  Border get h05 => _horizontal(0.5);
+  Border get h => _horizontal(1);
+  Border get h2 => _horizontal(2);
+  Border get h3 => _horizontal(3);
+  Border get h4 => _horizontal(4);
+  Border get h5 => _horizontal(5);
+  Border get h6 => _horizontal(6);
+  Border get h7 => _horizontal(7);
+  Border get h8 => _horizontal(8);
+  Border get h9 => _horizontal(9);
+  Border get h10 => _horizontal(10);
 }
 
 // How to use above class

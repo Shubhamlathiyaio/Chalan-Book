@@ -1,16 +1,16 @@
-import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
-import 'package:chalan_book_app/bloc/organization/organization_event.dart';
 import 'package:chalan_book_app/core/configs/app_typography.dart';
 import 'package:chalan_book_app/core/constants/app_colors.dart';
 import 'package:chalan_book_app/core/constants/app_keys.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
 import 'package:chalan_book_app/features/organization/views/organization_detail_page.dart';
-import 'package:chalan_book_app/shared/widgets/format_date.dart';
+import 'package:chalan_book_app/features/shared/widgets/empty_state.dart';
+import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/organization.dart';
 import '../../../main.dart';
-import '../../../shared/widgets/empty_state.dart';
 import 'create_organization_page.dart';
 
 class OrganizationListPage extends StatefulWidget {
@@ -57,7 +57,7 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        context.showSnackBar('Error loading organizations: $e', isError: true);
+        context.showSnackbar('Error loading organizations: $e', isError: true);
       }
     }
   }
@@ -111,7 +111,14 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Stack(
                   children: [
-                    ListTile(onTap: ()=>Navigator.push(context, MaterialPageRoute(builder: (context) => OrganizationDetailPage(organization: org),)),
+                    ListTile(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              OrganizationDetailPage(organization: org),
+                        ),
+                      ),
                       leading: CircleAvatar(
                         backgroundColor: Colors.blue,
                         child: Text(
@@ -129,15 +136,31 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
                           if (org.description != null) Text(org.description!),
                           Text(
                             'Created ${formatDate(org.createdAt)}',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                 Positioned(top: 0,right: 0,child: Padding(
-                   padding: const EdgeInsets.all(8.0),
-                   child: Text(supabase.auth.currentUser?.id==org.ownerId?"Owned":"Joined",style: poppins.w400.fs10 .textColor(supabase.auth.currentUser?.id==org.ownerId?AppColors.xff725ddb:AppColors.xff33a752),),
-                 ))
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          supabase.auth.currentUser?.id == org.ownerId
+                              ? "Owned"
+                              : "Joined",
+                          style: poppins.w400.fs10.textColor(
+                            supabase.auth.currentUser?.id == org.ownerId
+                                ? AppColors.xff725ddb
+                                : AppColors.xff33a752,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );

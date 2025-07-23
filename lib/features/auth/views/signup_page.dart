@@ -1,13 +1,12 @@
 // signup_page.dart
-import 'package:chalan_book_app/bloc/auth/auth_bloc.dart';
-import 'package:chalan_book_app/bloc/auth/auth_event.dart';
-import 'package:chalan_book_app/bloc/auth/auth_state.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
-import 'package:chalan_book_app/shared/widgets/custom_text_field.dart';
-import 'package:chalan_book_app/shared/widgets/loading_button.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_event.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_state.dart';
+import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
+import 'package:chalan_book_app/features/shared/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 

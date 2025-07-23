@@ -1,16 +1,17 @@
-import 'package:chalan_book_app/bloc/organization_invite/organization_invite_bloc.dart';
-import 'package:chalan_book_app/bloc/organization_invite/organization_invite_event.dart';
-import 'package:chalan_book_app/bloc/organization_invite/organization_invite_state.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_bloc.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_event.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_state.dart';
 import 'package:chalan_book_app/features/organization/views/member_card.dart';
-import 'package:chalan_book_app/shared/widgets/format_date.dart';
+import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
+import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
+import 'package:chalan_book_app/features/shared/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/models/organization.dart';
 import '../../../main.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/loading_button.dart';
 
 class OrganizationDetailPage extends StatefulWidget {
   final Organization organization;
@@ -42,7 +43,7 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
   Future<void> _sendInvite() async {
     final email = _emailController.text.trim().toLowerCase();
     if (email.isEmpty) {
-      context.showSnackBar('Please enter an email address', isError: true);
+      context.showSnackbar('Please enter an email address', isError: true);
       return;
     }
 
@@ -63,10 +64,10 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
         'email': email,
       });
 
-      context.showSnackBar('✅ Invite sent to $email');
+      context.showSnackbar('✅ Invite sent to $email');
       _emailController.clear();
     } catch (e) {
-      context.showSnackBar('❌ Failed to send invite: $e', isError: true);
+      context.showSnackbar('❌ Failed to send invite: $e', isError: true);
     }
   }
 
@@ -75,9 +76,9 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
     return BlocConsumer<OrganizationInviteBloc, OrganizationInviteState>(
       listener: (context, state) {
         if (state is OrganizationInviteFailure) {
-          context.showSnackBar(state.message, isError: true);
+          context.showSnackbar(state.message, isError: true);
         } else if (state is OrganizationInviteSent) {
-          context.showSnackBar('✅ Invite sent successfully!');
+          context.showSnackbar('✅ Invite sent successfully!');
         }
       },builder: (context, state) => Scaffold(
         appBar: AppBar(title: Text(widget.organization.name)),

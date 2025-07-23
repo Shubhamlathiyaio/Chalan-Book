@@ -1,6 +1,5 @@
-import 'package:chalan_book_app/bloc/organization/organization_bloc.dart';
-import 'package:chalan_book_app/bloc/organization/organization_event.dart';
-import 'package:chalan_book_app/theme/theme_extension.dart';
+import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../main.dart';
@@ -28,11 +27,12 @@ class _SplashPageState extends State<SplashPage> {
     if (mounted) {
       if (session != null) {
         context.pushReplacement(
-          BlocProvider(
-            create: (_) => OrganizationBloc(
-            )..add(LoadOrganizationsRequested()),
-            child: const HomePage(),
-          ),
+          // BlocProvider(
+          //   create: (_) =>
+          //       OrganizationBloc()..add(LoadOrganizationsRequested()),
+          //   child: 
+          // ),
+            const HomePage(),
         );
       } else {
         Navigator.pushReplacement(
