@@ -10,7 +10,7 @@ import 'filter_state.dart';
 class FilterBloc extends Bloc<FilterEvent, FilterState> {
   Timer? _debounceTimer;
 
-  FilterBloc() : super(const AdvancedChalanFilterInitialState()) {
+  FilterBloc() : super(const FilterInitialState()) {
     on<UpdateSearchQueryEvent>(_onUpdateSearchQuery);
     on<SetDateRangeFilterEvent>(_onSetDateRangeFilter);
     on<SetChalanNumberRangeFilterEvent>(_onSetChalanNumberRangeFilter);
@@ -144,7 +144,7 @@ class FilterBloc extends Bloc<FilterEvent, FilterState> {
 
     try {
       emit(
-        AdvancedChalanFilterLoadingState(
+        FilterLoadingState(
           filter: filter,
           originalChalans: state.originalChalans,
           filteredChalans: state.filteredChalans,
@@ -176,7 +176,7 @@ class FilterBloc extends Bloc<FilterEvent, FilterState> {
       filtered = _applySorting(filtered, filter);
 
       emit(
-        AdvancedChalanFilterAppliedState(
+        FilterAppliedState(
           filter: filter,
           originalChalans: state.originalChalans,
           filteredChalans: filtered,
@@ -184,7 +184,7 @@ class FilterBloc extends Bloc<FilterEvent, FilterState> {
       );
     } catch (e) {
       emit(
-        AdvancedChalanFilterErrorState(
+        FilterErrorState(
           message: 'Error applying filters: $e',
           filter: filter,
           originalChalans: state.originalChalans,
@@ -321,7 +321,7 @@ class FilterBloc extends Bloc<FilterEvent, FilterState> {
 
   void updateOriginalChalans(List<Chalan> chalans) {
     if (isClosed) return;
-    final stateToEmit = AdvancedChalanFilterAppliedState(
+    final stateToEmit = FilterAppliedState(
       filter: state.filter,
       originalChalans: chalans,
       filteredChalans: chalans,

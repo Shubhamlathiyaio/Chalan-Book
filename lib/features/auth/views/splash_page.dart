@@ -1,5 +1,5 @@
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
-import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
+import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../main.dart';
@@ -37,7 +37,12 @@ class _SplashPageState extends State<SplashPage> {
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => LoginPage()),
+          MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (_) => AuthBloc(),
+              child: LoginPage(),
+            ),
+          ),
         );
       }
     }

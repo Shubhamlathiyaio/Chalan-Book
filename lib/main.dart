@@ -1,4 +1,8 @@
+import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
 import 'package:chalan_book_app/features/chalan/bloc/filter_bloc.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_bloc.dart';
+import 'package:chalan_book_app/features/profile/views/profile_page.dart';
+import 'package:chalan_book_app/services/bloc_base/bloc_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,11 +16,12 @@ import 'features/organization/bloc/organization_bloc.dart';
 import 'features/theme/bloc/theme_bloc.dart';
 
 Future<void> main() async {
+  Bloc.observer = const AppBlocObserver();
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
+    url: AppKeys.supabaseUrl,
+    anonKey: AppKeys.supabaseAnonKey,
   );
 
   runApp(const MyApp());
@@ -36,12 +41,16 @@ class MyApp extends StatelessWidget {
       builder: (_, child) {
         return MultiBlocProvider(
           providers: [
+            BlocProvider(create: (_) => AuthBloc()),
             BlocProvider(create: (_) => ThemeBloc()..add(LoadThemeEvent())),
             BlocProvider(create: (_) => OrganizationBloc()),
             BlocProvider(
               create: (context) => ChalanBloc(organizationBloc: context.read<OrganizationBloc>(),
               ),
             ),
+            BlocProvider(create: (_) => OrganizationInviteBloc()),
+            BlocProvider(create: (_) => ProfileBloc()),
+            BlocProvider(create: (_) => OrganizationInviteBloc()),
             BlocProvider(create: (_) => FilterBloc()),
           ],
           child: BlocBuilder<ThemeBloc, ThemeState>(

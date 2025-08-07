@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:chalan_book_app/core/models/organization.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_keys.dart';
@@ -52,10 +53,6 @@ class LoadMissingChalanNumbers extends ChalanEvent {
   LoadMissingChalanNumbers(this.existingChalans);
 }
 
-class SelectChalanNumber extends ChalanEvent {
-  final int selectedNumber;
-  SelectChalanNumber(this.selectedNumber);
-}
 
 class PickImageFromCamera extends ChalanEvent {}
 
@@ -66,6 +63,13 @@ class RemoveImage extends ChalanEvent {}
 class UpdateChalanDate extends ChalanEvent {
   final DateTime date;
   UpdateChalanDate(this.date);
+}
+
+class PickChalanDate extends ChalanEvent {
+  final BuildContext context;
+  final DateTime initialDate;
+
+  PickChalanDate({required this.context, required this.initialDate});
 }
 
 // ################################################################################
@@ -141,6 +145,7 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     on<PickImageFromCamera>(_onPickImageFromCamera);
     on<PickImageFromGallery>(_onPickImageFromGallery);
     on<RemoveImage>(_onRemoveImage);
+    on<PickChalanDate>(_onPickChalanDate);
 
     _initializeOrganizationListener();
   }
@@ -200,7 +205,7 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
 
     try {
       final response = await supabase
-          .from(chalansTable)
+          .from(AppKeys.chalansTable)
           .select()
           .eq('organization_id', event.organization.id)
           .order('chalan_number', ascending: true);
@@ -234,8 +239,9 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     AddChalanEvent event,
     Emitter<ChalanState> emit,
   ) async {
+    emit(ChalanLoading());
     try {
-      await supabase.from(chalansTable).insert(event.chalan.toJson());
+      await supabase.from(AppKeys.chalansTable).insert(event.chalan.toJson());
 
       if (state is ChalanLoaded) {
         final current = (state as ChalanLoaded);
@@ -289,7 +295,7 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
   ) async {
     try {
       await supabase
-          .from(chalansTable)
+          .from(AppKeys.chalansTable)
           .update(event.chalan.toJson())
           .eq('id', event.chalan.id);
 
@@ -329,10 +335,15 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
       if (event.chalan.imageUrl != null) {
         final uri = Uri.parse(event.chalan.imageUrl!);
         final fileName = uri.pathSegments.last;
-        await supabase.storage.from(chalanImagesBucket).remove([fileName]);
+        await supabase.storage.from(AppKeys.chalanImagesBucket).remove([
+          fileName,
+        ]);
       }
 
-      await supabase.from(chalansTable).delete().eq('id', event.chalan.id);
+      await supabase
+          .from(AppKeys.chalansTable)
+          .delete()
+          .eq('id', event.chalan.id);
 
       if (state is ChalanLoaded) {
         final current = (state as ChalanLoaded);
@@ -515,6 +526,32 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
           selectedNumber: current.selectedNumber,
           selectedImage: null,
           selectedDate: current.selectedDate,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onPickChalanDate(
+    PickChalanDate event,
+    Emitter<ChalanState> emit,
+  ) async {
+    final picked = await showDatePicker(
+      context: event.context,
+      initialDate: event.initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (picked != null && state is ChalanLoaded) {
+      final current = state as ChalanLoaded;
+      emit(
+        ChalanLoaded(
+          chalans: current.chalans,
+          missingNumbers: current.missingNumbers,
+          nextAvailableNumber: current.nextAvailableNumber,
+          selectedNumber: current.selectedNumber,
+          selectedImage: current.selectedImage,
+          selectedDate: picked,
         ),
       );
     }

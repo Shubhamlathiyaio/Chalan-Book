@@ -1,3 +1,5 @@
+import 'package:chalan_book_app/features/shared/local_bg/preference_helper.dart';
+
 class AdvancedChalanFilter {
   final String searchQuery;
   final SearchType searchType;
@@ -36,7 +38,7 @@ class AdvancedChalanFilter {
     CreatedByFilter? createdByFilter,
     int? selectedMonth,
     int? selectedYear,
-    SortOrder? sortOrder,
+    SortOrder sortOrder = SortOrder.ascending,
     SortBy? sortBy,
     bool clearDateRange = false,
     bool clearChalanRange = false,

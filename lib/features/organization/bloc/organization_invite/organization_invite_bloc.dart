@@ -19,7 +19,7 @@ class OrganizationInviteBloc extends Bloc<OrganizationInviteEvent, OrganizationI
     emit(OrganizationInviteLoading());
     try {
       final response = await supabase
-          .from(organizationUsersTable)
+          .from(AppKeys.organizationUsersTable)
           .select('*')
           .eq('organization_id', event.organizationId);
 

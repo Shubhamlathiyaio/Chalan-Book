@@ -6,19 +6,19 @@ abstract class FilterState {
   final AdvancedChalanFilter filter;
   final List<Chalan> originalChalans;
   final List<Chalan> filteredChalans;
-  final bool isLoading;
+  // final bool isLoading;
 
   const FilterState({
     required this.filter,
     required this.originalChalans,
     required this.filteredChalans,
-    this.isLoading = false,
+    // this.isLoading = false,
   });
 }
 
 /// Initial state
-class AdvancedChalanFilterInitialState extends FilterState {
-  const AdvancedChalanFilterInitialState()
+class FilterInitialState extends FilterState {
+  const FilterInitialState()
     : super(
         filter: const AdvancedChalanFilter(),
         originalChalans: const [],
@@ -27,17 +27,17 @@ class AdvancedChalanFilterInitialState extends FilterState {
 }
 
 /// Loading state
-class AdvancedChalanFilterLoadingState extends FilterState {
-  const AdvancedChalanFilterLoadingState({
+class FilterLoadingState extends FilterState {
+  const FilterLoadingState({
     required super.filter,
     required super.originalChalans,
     required super.filteredChalans,
-  }) : super(isLoading: true);
+  }) : super();
 }
 
 /// Applied state
-class AdvancedChalanFilterAppliedState extends FilterState {
-  const AdvancedChalanFilterAppliedState({
+class FilterAppliedState extends FilterState {
+  const FilterAppliedState({
     required super.filter,
     required super.originalChalans,
     required super.filteredChalans,
@@ -45,10 +45,10 @@ class AdvancedChalanFilterAppliedState extends FilterState {
 }
 
 /// Error state
-class AdvancedChalanFilterErrorState extends FilterState {
+class FilterErrorState extends FilterState {
   final String message;
 
-  const AdvancedChalanFilterErrorState({
+  const FilterErrorState({
     required this.message,
     required super.filter,
     required super.originalChalans,

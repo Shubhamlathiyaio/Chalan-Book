@@ -77,7 +77,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       if (user == null) throw Exception('User not authenticated');
 
       final response = await supabase
-          .from(organizationUsersTable)
+          .from(AppKeys.organizationUsersTable)
           .select('organization_id, organizations:organization_id(*)')
           .eq('user_id', user.id);
 
@@ -88,7 +88,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
 
       if (orgs.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
-        final cachedId = prefs.getString(selectedOrgId);
+        final cachedId = prefs.getString(AppKeys.selectedOrgId);
         final selectedOrg = orgs.firstWhere(
           (org) => org.id == cachedId,
           orElse: () => orgs.first,
@@ -113,7 +113,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       if (user == null) throw Exception('User not authenticated');
 
       final existing = await supabase
-          .from(organizationsTable)
+          .from(AppKeys.organizationsTable)
           .select('id')
           .eq('name', event.name.trim())
           .maybeSingle();
@@ -123,7 +123,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       }
 
       final orgId = const Uuid().v4();
-      await supabase.from(organizationsTable).insert({
+      await supabase.from(AppKeys.organizationsTable).insert({
         'id': orgId,
         'name': event.name.trim(),
         'description': event.description?.trim(),
@@ -131,7 +131,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      await supabase.from(organizationUsersTable).insert({
+      await supabase.from(AppKeys.organizationUsersTable).insert({
         'id': const Uuid().v4(),
         'organization_id': orgId,
         'user_id': user.id,
@@ -151,7 +151,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
     Emitter<OrganizationState> emit,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(selectedOrgId, event.organization.id);
+    await prefs.setString(AppKeys.selectedOrgId, event.organization.id);
 
     if (state is OrganizationLoaded) {
       final currentState = state as OrganizationLoaded;

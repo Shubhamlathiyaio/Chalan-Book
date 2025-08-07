@@ -1,4 +1,3 @@
-import '../../../core/models/organization.dart';
 
 /// Enum for different filter types
 enum FilterType {

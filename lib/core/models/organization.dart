@@ -15,6 +15,24 @@ class Organization {
     required this.currentChalanNumber,
   });
 
+  Organization copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? ownerId,
+    DateTime? createdAt,
+    int? currentChalanNumber,
+  }) {
+    return Organization(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      ownerId: ownerId ?? this.ownerId,
+      createdAt: createdAt ?? this.createdAt,
+      currentChalanNumber: currentChalanNumber ?? this.currentChalanNumber,
+    );
+  }
+
   factory Organization.fromJson(Map<String, dynamic> json) {
     return Organization(
       id: json['id'] as String,

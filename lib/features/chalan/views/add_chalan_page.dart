@@ -1,29 +1,30 @@
 import 'dart:io';
+
 import 'package:chalan_book_app/core/configs/edge.dart';
 import 'package:chalan_book_app/core/configs/gap.dart';
-import 'package:chalan_book_app/core/constants/app_keys.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
+import 'package:chalan_book_app/core/extensions/typography_extension.dart';
 import 'package:chalan_book_app/core/models/chalan.dart';
 import 'package:chalan_book_app/core/models/organization.dart';
 import 'package:chalan_book_app/features/chalan/bloc/chalan_bloc.dart';
 import 'package:chalan_book_app/main.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 class AddChalanPage extends StatefulWidget {
   final Organization organization;
-  final List<Chalan> chalans;
+  final List<Chalan>? chalans;
   final Chalan? chalan;
 
   const AddChalanPage({
     super.key,
     required this.organization,
-    required this.chalans,
+    this.chalans,
     this.chalan,
   });
 
@@ -32,33 +33,37 @@ class AddChalanPage extends StatefulWidget {
 }
 
 class _AddChalanPageState extends State<AddChalanPage> {
+  late final bool isUpdateMode;
   final _formKey = GlobalKey<FormState>();
   late final _chalanNumberController = TextEditingController();
   late final FocusNode _chalanFocusNode;
   List<int> _missingNumbers = [];
   final _descriptionController = TextEditingController();
-  final _imagePicker = ImagePicker();
-  File? _selectedImage;
-  bool _isLoading = false;
   DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    isUpdateMode = widget.chalan != null;
     _chalanFocusNode = FocusNode();
 
     final chalanState = context.read<ChalanBloc>().state;
     List<Chalan> existingChalans = chalanState is ChalanLoaded
         ? chalanState.chalans
         : [];
+    print('Chalans length: ${widget.chalans?.length ?? 0}');
+    print('Existing Chalans length: ${existingChalans.length}');
+    print('Chalans length equals Existing Chalans length: ${widget.chalans?.length == existingChalans.length}');
+
     _missingNumbers = _calculateMissingNumbers(existingChalans);
 
     if (widget.chalan != null) {
       _chalanNumberController.text = widget.chalan!.chalanNumber;
+
       _descriptionController.text = widget.chalan!.description ?? '';
       _selectedDate = widget.chalan!.dateTime;
     } else {
-      _missingNumbers = _calculateMissingNumbers(widget.chalans);
+      _missingNumbers = _calculateMissingNumbers(widget.chalans ?? []);
       _chalanNumberController.text = _missingNumbers.length == 1
           ? "${_missingNumbers.first}"
           : "";
@@ -80,7 +85,8 @@ class _AddChalanPageState extends State<AddChalanPage> {
     if (numbers.isEmpty) return [1];
     final max = numbers.reduce((a, b) => a > b ? a : b);
     final missing = <int>[];
-    for (int i = 1; i <= max + 1; i++) {
+    // for (int i = max + 1; i >= 1; i--) { // ascending order
+    for (int i = 1; i <= max + 1; i++) { // descending order
       if (!numbers.contains(i)) missing.add(i);
     }
     return missing;
@@ -97,7 +103,9 @@ class _AddChalanPageState extends State<AddChalanPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add New Chalan'),
+        title: isUpdateMode
+            ? const Text('Update Chalan')
+            : const Text('Add New Chalan'),
         backgroundColor: context.colors.surface,
         elevation: 0,
         scrolledUnderElevation: 1,
@@ -111,36 +119,28 @@ class _AddChalanPageState extends State<AddChalanPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: GestureDetector(
-                      onTap: () => _selectDate,
-                      child: Card(
-                        child: Padding(
-                          padding: edge.all4,
-                          child: Icon(Icons.calendar_today),
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Align(
+                  //   alignment: Alignment.centerRight,
+                  //   child: GestureDetector(
+                  //     onTap: () => _selectDate,
+                  //     child: Card(
+                  //       child: Padding(
+                  //         padding: edge.all4,
+                  //         child: Icon(Icons.calendar_today),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
+                  // gap.h8,
+                  // _buildDateButton(),
                   gap.h8,
-                  _buildDateButton(),
-                  gap.h8,
-                  
+
                   _buildChalanNumberField(state),
                   gap.h16,
                   _buildDescriptionField(),
-                  
+
                   gap.h16,
-                  BlocBuilder<ChalanBloc, ChalanState>(
-                    builder: (context, state) {
-                      if (state is ChalanLoaded) {
-                        return _buildImageSection(context, state.selectedImage);
-                      } else {
-                        return _buildImageSection(context, null);
-                      }
-                    },
-                  ),
+                  _buildImageSection(context),
                   gap.h32,
                   _buildSubmitButton(),
                 ],
@@ -152,37 +152,48 @@ class _AddChalanPageState extends State<AddChalanPage> {
     );
   }
 
-
-Widget _buildDateButton(){
-  return BlocBuilder<ChalanBloc, ChalanState>(
-  builder: (context, state) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Card(
-        child: Padding(
-          padding: edge.all8,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                DateFormat('dd-MM-yyyy').format(state is ChalanLoaded ? state.selectedDate: DateTime.now()),
-                style: TextStyle(fontSize: 14.sp),
+  Widget _buildDateButton() {
+    return BlocBuilder<ChalanBloc, ChalanState>(
+      builder: (context, state) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Card(
+            child: Padding(
+              padding: edge.all8,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BlocBuilder<ChalanBloc, ChalanState>(
+                    builder: (context, state) {
+                      if (state is ChalanLoaded) {
+                        return Text(
+                          DateFormat('dd-MM-yyyy').format(state.selectedDate),
+                          style: poppins.fs14,
+                        );
+                      } else {
+                        return Text(
+                          DateFormat('dd-MM-yyyy').format(DateTime.now()),
+                        );
+                      }
+                    },
+                  ),
+                  SizedBox(width: 8.w),
+                  GestureDetector(
+                    onTap: () => _selectDate(),
+                    child: Icon(Icons.calendar_today),
+                  ),
+                ],
               ),
-              SizedBox(width: 8.w),
-              GestureDetector(
-                onTap: () => _selectDate(),
-                child: Icon(Icons.calendar_today),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
-  },
-);
+  }
 
-}
   Widget _buildChalanNumberField(ChalanState state) {
+    final isEditMode = widget.chalan != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -224,40 +235,40 @@ Widget _buildDateButton(){
                 }
               },
             ),
-            if (_missingNumbers.length > 1) ...[
+
+            // Show missing numbers ONLY if not in edit mode and list has more than 1 item
+            if (!isEditMode && _missingNumbers.length > 1) ...[
               gap.h8,
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _missingNumbers.map((number) {
-                  return GestureDetector(
-                    onTap: () {
-                      _chalanNumberController.text = number.toString();
-                      context.read<ChalanBloc>().add(
-                        SelectChalanNumber(number),
-                      );
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: edge.h12.v6,
-                      decoration: BoxDecoration(
-                        color: context.colors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: context.colors.outline,
-                          width: 1,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _missingNumbers.map((number) {
+                    return GestureDetector(
+                      onTap: () {
+                        _chalanNumberController.text = number.toString();
+                      },
+                      child: Container(
+                        margin: EdgeInsets.only(right: 8.w),
+                        padding: edge.h12.v6,
+                        decoration: BoxDecoration(
+                          color: context.colors.surface,
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: Border.all(
+                            color: context.colors.outline,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          number.toString(),
+                          style: context.textTheme.labelLarge?.copyWith(
+                            color: context.colors.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        number.toString(),
-                        style: context.textTheme.labelLarge?.copyWith(
-                          color: context.colors.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
             ],
           ],
@@ -290,60 +301,76 @@ Widget _buildDateButton(){
     );
   }
 
-  Widget _buildImageSection(BuildContext context, File? imageFile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Chalan Image (Optional)',
-          style: context.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        gap.h8,
-        if (imageFile != null) ...[
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12.r),
-                child: Image.file(
-                  imageFile,
-                  height: 200.h,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+  Widget _buildImageSection(BuildContext context) {
+    return BlocBuilder<ChalanBloc, ChalanState>(
+      builder: (context, state) {
+        if (state is! ChalanLoaded) return SizedBox();
+
+        final File? selectedImage = state.selectedImage;
+        final String? imageUrl = widget.chalan?.imageUrl;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Chalan Image (Optional)',
+              style: context.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-              Positioned(
-                right: 8.w,
-                top: 8.h,
-                child: _iconActionButton(
-                  icon: Icons.close,
-                  onPressed: () =>
-                      context.read<ChalanBloc>().add(RemoveImage()),
-                ),
+            ),
+            gap.h8,
+            if (selectedImage != null || imageUrl != null) ...[
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12.r),
+                    child: selectedImage != null
+                        ? Image.file(
+                            selectedImage,
+                            height: 200.h,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.network(
+                            imageUrl!,
+                            height: 200.h,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                  Positioned(
+                    right: 8.w,
+                    top: 8.h,
+                    child: _iconActionButton(
+                      icon: Icons.close,
+                      onPressed: () =>
+                          context.read<ChalanBloc>().add(RemoveImage()),
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  _beautifulPickButton(
+                    icon: Icons.photo_library,
+                    label: 'Gallery',
+                    onTap: () =>
+                        context.read<ChalanBloc>().add(PickImageFromGallery()),
+                  ),
+                  gap.w8,
+                  _beautifulPickButton(
+                    icon: Icons.camera_alt,
+                    label: 'Camera',
+                    onTap: () =>
+                        context.read<ChalanBloc>().add(PickImageFromCamera()),
+                  ),
+                ],
               ),
             ],
-          ),
-        ] else ...[
-          Row(
-            children: [
-              _beautifulPickButton(
-                icon: Icons.photo_library,
-                label: 'Gallery',
-                onTap: () =>
-                    context.read<ChalanBloc>().add(PickImageFromGallery()),
-              ),
-              gap.w8,
-              _beautifulPickButton(
-                icon: Icons.camera_alt,
-                label: 'Camera',
-                onTap: () =>
-                    context.read<ChalanBloc>().add(PickImageFromCamera()),
-              ),
-            ],
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -359,28 +386,21 @@ Widget _buildDateButton(){
           height: 100.h,
           padding: EdgeInsets.all(12.r),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(16.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: context.colors.outline),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 28.sp, color: Colors.black87),
+              Icon(icon, size: 28.sp, color: context.colors.onSurface),
               SizedBox(height: 8.h),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+                  color: context.colors.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -407,11 +427,11 @@ Widget _buildDateButton(){
   Widget _buildSubmitButton() {
     return BlocBuilder<ChalanBloc, ChalanState>(
       builder: (context, state) {
-        final isLoading = _isLoading || state is ChalanLoading;
+        final isLoading = state is ChalanLoading;
         return FilledButton(
           onPressed: isLoading ? null : _submitChalan,
           style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: edge.v16,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -422,9 +442,12 @@ Widget _buildDateButton(){
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text(
-                  'Add Chalan',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              : Text(
+                  widget.chalan != null ? 'Update Chalan' : 'Save Chalan',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
         );
       },
@@ -443,37 +466,43 @@ Widget _buildDateButton(){
       setState(() => _selectedDate = date);
     }
   }
+
   Future<void> _submitChalan() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+
     try {
       String? imageUrl;
-      if (_selectedImage != null) {
-        final fileName = '${const Uuid().v4()}.jpg';
-        await supabase.storage
-            .from(chalanImagesBucket)
-            .upload(fileName, _selectedImage!);
-        imageUrl = supabase.storage
-            .from(chalanImagesBucket)
-            .getPublicUrl(fileName);
+      final state = context.read<ChalanBloc>().state;
+
+      if (state is ChalanLoaded && state.selectedImage != null) {
+        imageUrl = await Supa().setImageAndGetUrl(
+          imageFile: state.selectedImage!,
+        );
       }
+
       final chalan = Chalan(
-        id: const Uuid().v4(),
+        id: widget.chalan?.id ?? const Uuid().v4(), // keep same id in edit mode
         organizationId: widget.organization.id,
-        createdBy: supabase.auth.currentUser!.id,
+        createdBy: widget.chalan?.createdBy ?? supabase.auth.currentUser!.id,
         chalanNumber: _chalanNumberController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        imageUrl: imageUrl,
+        imageUrl: imageUrl ?? widget.chalan?.imageUrl,
         dateTime: _selectedDate,
       );
-      context.read<ChalanBloc>().add(AddChalanEvent(chalan));
+
+      if (!mounted) return;
+
+      if (widget.chalan != null) {
+        context.read<ChalanBloc>().add(UpdateChalanEvent(chalan));
+      } else {
+        context.read<ChalanBloc>().add(AddChalanEvent(chalan));
+      }
+
       Navigator.pop(context);
     } catch (e) {
-      context.showSnackbar('Error creating chalan: $e', isError: true);
-    } finally {
-      setState(() => _isLoading = false);
+      context.showSnackbar('Error submitting chalan: $e', isError: true);
     }
   }
 }

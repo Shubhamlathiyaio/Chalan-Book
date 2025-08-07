@@ -60,7 +60,8 @@ class AppLocalizations {
   String get searchChalans => translate('search_chalans');
   String get loadingChalans => translate('loading_chalans');
   String get noOrganizationSelected => translate('no_organization_selected');
-  String get selectOrCreateOrganization => translate('select_or_create_organization');
+  String get selectOrCreateOrganization =>
+      translate('select_or_create_organization');
   String get goToOrganizations => translate('go_to_organizations');
   String get goToOrganizationsTab => translate('go_to_organizations_tab');
   String get noChalansFound => translate('no_chalans_found');
@@ -74,7 +75,8 @@ class AppLocalizations {
   String get unknown => translate('unknown');
   String get me => translate('me');
   String get member => translate('member');
-  String get deleteChalanConfirmation => translate('delete_chalan_confirmation');
+  String get deleteChalanConfirmation =>
+      translate('delete_chalan_confirmation');
   String get actionCannotBeUndone => translate('action_cannot_be_undone');
   String get createdDate => translate('created_date');
   String get date => translate('date');
@@ -118,7 +120,8 @@ class AppLocalizations {
       'search_chalans': 'Search chalans...',
       'loading_chalans': 'Loading your chalans...',
       'no_organization_selected': 'No Organization Selected',
-      'select_or_create_organization': 'Please select or create an organization first',
+      'select_or_create_organization':
+          'Please select or create an organization first',
       'go_to_organizations': 'Go to Organizations',
       'go_to_organizations_tab': 'Go to the Organizations tab',
       'no_chalans_found': 'No Chalans Found',
@@ -132,7 +135,8 @@ class AppLocalizations {
       'unknown': 'Unknown',
       'me': 'Me',
       'member': 'Member',
-      'delete_chalan_confirmation': 'Are you sure you want to delete this chalan?',
+      'delete_chalan_confirmation':
+          'Are you sure you want to delete this chalan?',
       'action_cannot_be_undone': 'This action cannot be undone.',
       'created_date': 'Created Date',
       'date': 'Date',
@@ -181,7 +185,8 @@ class AppLocalizations {
       'no_chalans_found': 'कोई चालान नहीं मिला',
       'add_first_chalan': 'शुरुआत करने के लिए अपना पहला चालान जोड़ें',
       'no_results_found': 'कोई परिणाम नहीं मिला',
-      'adjust_filters': 'अपने फिल्टर या खोज शब्दों को समायोजित करने का प्रयास करें',
+      'adjust_filters':
+          'अपने फिल्टर या खोज शब्दों को समायोजित करने का प्रयास करें',
       'clear_filters': 'फिल्टर साफ़ करें',
       'something_went_wrong': 'ओह! कुछ गलत हुआ',
       'try_again': 'पुनः प्रयास करें',
@@ -197,7 +202,8 @@ class AppLocalizations {
   };
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override

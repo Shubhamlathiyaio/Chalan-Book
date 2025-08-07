@@ -3,9 +3,9 @@ import 'package:chalan_book_app/core/extensions/context_extension.dart';
 import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
 import 'package:chalan_book_app/features/auth/auth/auth_event.dart';
 import 'package:chalan_book_app/features/auth/auth/auth_state.dart';
+import 'package:chalan_book_app/features/auth/views/forgot_password.dart';
 import 'package:chalan_book_app/features/auth/views/signup_page.dart';
 import 'package:chalan_book_app/features/home/views/home_page.dart';
-import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
 import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
 import 'package:chalan_book_app/features/shared/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
@@ -70,6 +70,10 @@ class LoginPage extends StatelessWidget {
                       onPressed: () => context.push(const SignupPage()),
                       child: Text(AppStrings.dontHaveAccount),
                     ),
+                    TextButton(
+                      onPressed: () => context.push(const ForgotPasswordScreen()),
+                      child: Text(AppStrings.forgotPassword),
+                    )
                   ],
                 ),
               );

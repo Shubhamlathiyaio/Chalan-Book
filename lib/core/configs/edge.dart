@@ -36,9 +36,11 @@ extension SuperEdgeInsets on EdgeInsets {
   EdgeInsets get h12 => hf(12);
   EdgeInsets get h15 => hf(15);
   EdgeInsets get h16 => hf(16);
+  EdgeInsets get h18 => hf(18);
   EdgeInsets get h20 => hf(20);
   EdgeInsets get h24 => hf(24);
   EdgeInsets get h30 => hf(30);
+  EdgeInsets get h32 => hf(32);
   EdgeInsets get h40 => hf(40);
 
   //============================================================================

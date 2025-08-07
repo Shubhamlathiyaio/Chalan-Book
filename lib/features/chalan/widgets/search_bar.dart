@@ -5,7 +5,8 @@ import 'package:chalan_book_app/features/chalan/bloc/filter_bloc.dart';
 import 'package:chalan_book_app/features/chalan/bloc/filter_event.dart';
 import 'package:chalan_book_app/features/chalan/bloc/filter_state.dart';
 import 'package:chalan_book_app/features/chalan/models/advanced_filter_model.dart';
-import 'package:chalan_book_app/features/chalan/models/filter.dart' hide SortOrder, CreatedByFilter, SortBy;
+import 'package:chalan_book_app/features/chalan/models/filter.dart'
+    hide SortOrder, CreatedByFilter, SortBy;
 import 'package:chalan_book_app/features/chalan/widgets/filter_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,9 +37,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _showClearButton = _searchController.text.isNotEmpty;
-    });
+    _showClearButton = _searchController.text.isNotEmpty;
 
     context.read<FilterBloc>().add(
       UpdateSearchQueryEvent(_searchController.text),
@@ -57,60 +56,56 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
             color: context.colors.surface,
             boxShadow: [
               BoxShadow(
-                color: context.colors.shadow.withOpacity(0.1),
-                blurRadius: 4.r,
+                color: context.colors.shadow.withAlpha(25),
                 offset: Offset(0, 2.h),
               ),
             ],
           ),
           child: Column(
             children: [
-              // Search bar
-              Container(
-                decoration: BoxDecoration(
-                  color: context.colors.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: context.colors.outline),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: l10n.translate('search_chalans'),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                    suffixIcon: _showClearButton
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.clear,
-                              color: context.colors.onSurfaceVariant,
-                            ),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 12.h,
-                      horizontal: 16.w,
-                    ),
-                  ),
-                ),
-              ),
-
-              gap.h12,
-
-              // Filter and sort buttons
               Row(
                 children: [
-                  _buildActionButton(
-                    icon: Icons.filter_list,
-                    hasActiveFilters: state.filter.hasActiveFilters,
-                    onPressed: _showFilterBottomSheet,
+                  // Search bar (expanded)
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: context.colors.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: context.colors.outline),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: l10n.translate('search_chalans'),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                          suffixIcon: _showClearButton
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: context.colors.onSurfaceVariant,
+                                  ),
+                                  onPressed: () => _searchController.clear(),
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 12.h,
+                            horizontal: 16.w,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  12.horizontalSpace,
+                  8.horizontalSpace,
+                  // _buildActionButton(
+                  //   icon: Icons.filter_list,
+                  //   hasActiveFilters: state.filter.hasActiveFilters,
+                  //   onPressed: _showFilterBottomSheet,
+                  // ),
+                  // 8.horizontalSpace,
                   _buildActionButton(
                     icon: state.filter.sortOrder == SortOrder.ascending
                         ? Icons.arrow_upward
@@ -120,23 +115,23 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
                         state.filter.sortBy != SortBy.createdAt,
                     onPressed: _toggleSortOrder,
                   ),
-                  const Spacer(),
-                  if (state.filter.hasActiveFilters)
-                    TextButton.icon(
-                      onPressed: _clearAllFilters,
-                      icon: Icon(Icons.clear_all, size: 18.w),
-                      label: Text(l10n.translate('clear_all')),
-                      style: TextButton.styleFrom(
-                        foregroundColor: context.colors.primary,
-                      ),
-                    ),
                 ],
               ),
-
-              // Active filters chips
+              gap.h12,
               if (state.filter.hasActiveFilters) ...[
-                gap.h12,
                 _buildActiveFiltersChips(state),
+                gap.h8,
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _clearAllFilters,
+                    icon: Icon(Icons.clear_all, size: 18.w,),
+                    label: Text(l10n.translate('clear_all')),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.colors.primary,
+                    ),
+                  ),
+                ),
               ],
             ],
           ),
@@ -145,35 +140,41 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     );
   }
 
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    bool hasActiveFilters = false,
-  }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: hasActiveFilters
-            ? context.colors.primary
-            : context.colors.onSurface,
-        side: BorderSide(
+ Widget _buildActionButton({
+  required IconData icon,
+  required VoidCallback onPressed,
+  bool hasActiveFilters = false,
+}) {
+  return SizedBox(
+    height: 48.h,
+    width: 48.h,
+    child: GestureDetector(
+      onTap: onPressed,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: hasActiveFilters
+              ? context.colors.primary.withOpacity(0.1)
+              : context.colors.surface,
+          border: Border.all(
+            color: hasActiveFilters
+                ? context.colors.primary
+                : context.colors.outline,
+          ),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 18.w,
           color: hasActiveFilters
               ? context.colors.primary
-              : context.colors.outline,
+              : context.colors.onSurface,
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-        minimumSize: Size(24.w, 36.h), // Decreased button width
       ),
-      child: Icon(
-        icon,
-        size: 18.w,
-        color: hasActiveFilters
-            ? context.colors.primary
-            : context.colors.onSurface,
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildActiveFiltersChips(FilterState state) {
     final filter = state.filter;
@@ -197,9 +198,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
         _buildFilterChip(
           label: _getMonthText(filter as Filter),
           onRemove: () {
-            context.read<FilterBloc>().add(
-              SetMonthFilterEvent(month: null),
-            );
+            context.read<FilterBloc>().add(SetMonthFilterEvent(month: null));
           },
         ),
       );
@@ -274,8 +273,18 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
 
   String _getMonthText(Filter filter) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '🗓️ ${months[filter.selectedMonth! - 1]} ${filter.selectedYear}';
   }
@@ -330,11 +339,13 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
   void _toggleSortOrder() {
     final bloc = context.read<FilterBloc>();
     final currentOrder = bloc.state.filter.sortOrder;
-    bloc.add(ChangeSortOrderEvent(
-      currentOrder == SortOrder.ascending
-          ? SortOrder.descending
-          : SortOrder.ascending,
-    ));
+    bloc.add(
+      ChangeSortOrderEvent(
+        currentOrder == SortOrder.ascending
+            ? SortOrder.descending
+            : SortOrder.ascending,
+      ),
+    );
     bloc.add(ApplyFiltersEvent());
   }
 

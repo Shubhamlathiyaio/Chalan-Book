@@ -4,6 +4,7 @@ import 'package:chalan_book_app/core/constants/app_keys.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
 import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_bloc.dart';
 import 'package:chalan_book_app/features/organization/views/organization_detail_page.dart';
 import 'package:chalan_book_app/features/shared/widgets/empty_state.dart';
 import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
@@ -39,7 +40,7 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
       if (user == null) return;
 
       final response = await supabase
-          .from(organizationUsersTable)
+          .from(AppKeys.organizationUsersTable)
           .select('organization_id, organizations:organization_id(*)')
           .eq('user_id', user.id);
 
@@ -133,7 +134,7 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (org.description != null) Text(org.description!),
+                          if (org.description != null) Text(org.description??""),
                           Text(
                             'Created ${formatDate(org.createdAt)}',
                             style: TextStyle(
@@ -177,9 +178,11 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
   }
 
   void _navigateToCreateOrganization() async {
-    final created = await Navigator.push<bool>(
+    final created = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreateOrganizationPage()),
+      MaterialPageRoute(
+        builder: (context) => CreateOrganizationPage(),
+      ),
     );
     if (created == true) {
       _loadOrganizations();
