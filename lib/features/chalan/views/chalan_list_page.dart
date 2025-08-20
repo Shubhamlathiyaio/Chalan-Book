@@ -12,7 +12,8 @@ import 'package:chalan_book_app/features/chalan/views/chalan_detail_page.dart';
 import 'package:chalan_book_app/features/shared/local_bg/preference_helper.dart';
 import 'package:chalan_book_app/features/shared/widgets/empty_state.dart';
 import 'package:chalan_book_app/features/shared/widgets/loading.dart';
-import 'package:chalan_book_app/main.dart';
+import 'package:chalan_book_app/services/mega_image_service.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,9 +22,9 @@ import '../../../../core/models/chalan.dart';
 import '../../../../core/models/organization.dart';
 
 class ChalanListPage extends StatelessWidget {
+  final supa = Supa();
   final Organization? organization;
-
-  const ChalanListPage({super.key, required this.organization});
+ChalanListPage({super.key, required this.organization});
 
   @override
   Widget build(BuildContext context) {
@@ -229,7 +230,9 @@ class ChalanListPage extends StatelessWidget {
               ),
               SizedBox(height: 24.h),
               ElevatedButton.icon(
-                onPressed: ()=> context.read<ChalanBloc>().add(LoadChalansEvent(organization!)),
+                onPressed: () => context.read<ChalanBloc>().add(
+                  LoadChalansEvent(organization!),
+                ),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
                 style: ElevatedButton.styleFrom(
@@ -306,33 +309,11 @@ class ChalanListPage extends StatelessWidget {
         child: chalan.imageUrl != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(12.r),
-                child: Image.network(
-                  chalan.imageUrl!,
+                child: MegaImageWidget(
+                  imageUrl: chalan.imageUrl,
+                  width: 60.w,
+                  height: 60.h,
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: SizedBox(
-                        width: 20.w,
-                        height: 20.h,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: context.colors.primary,
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.receipt_long,
-                      color: context.colors.primary,
-                      size: 24.w,
-                    );
-                  },
                 ),
               )
             : Icon(
@@ -503,7 +484,7 @@ class ChalanListPage extends StatelessWidget {
     if (createdBy == null) return 'Unknown';
 
     // Check if current user
-    final currentUserId = supabase.auth.currentUser?.id;
+    final currentUserId = supa.currentUserId;
     if (createdBy == currentUserId) return 'Me';
 
     // Check organization role (you might want to fetch this from database)
@@ -515,7 +496,7 @@ class ChalanListPage extends StatelessWidget {
   Color _getCreatorColor(BuildContext context, String? createdBy) {
     if (createdBy == null) return context.colors.outline;
 
-    final currentUserId = supabase.auth.currentUser?.id;
+    final currentUserId = supa.currentUserId;
     if (createdBy == currentUserId) return Colors.green;
 
     return context.colors.primary;

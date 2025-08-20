@@ -1,3 +1,5 @@
+import 'package:chalan_book_app/services/auth_services.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/extensions/context_extension.dart';
@@ -10,15 +12,14 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = supabase.auth.currentUser;
-    
+    final supa = Supa();
+    final user = supa.currentUser;
+
     return Drawer(
       child: Column(
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: context.colors.primaryContainer,
-            ),
+            decoration: BoxDecoration(color: context.colors.primaryContainer),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
@@ -68,10 +69,12 @@ class AppDrawer extends StatelessWidget {
                   builder: (context, state) {
                     return SwitchListTile(
                       secondary: Icon(
-                        state.themeMode==ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+                        state.themeMode == ThemeMode.dark
+                            ? Icons.dark_mode
+                            : Icons.light_mode,
                       ),
                       title: const Text('Dark Mode'),
-                      value: state.themeMode==ThemeMode.dark,
+                      value: state.themeMode == ThemeMode.dark,
                       onChanged: (value) {
                         context.read<ThemeBloc>().add(ToggleThemeEvent());
                       },
@@ -83,7 +86,7 @@ class AppDrawer extends StatelessWidget {
                   leading: const Icon(Icons.logout),
                   title: const Text('Logout'),
                   onTap: () async {
-                    await supabase.auth.signOut();
+                    await AuthService().signOut();
                     if (context.mounted) {
                       Navigator.pushReplacement(
                         context,

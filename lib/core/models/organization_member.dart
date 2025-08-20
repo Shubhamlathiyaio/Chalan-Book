@@ -3,6 +3,7 @@ class OrganizationMember {
   final String organizationId;
   final String userId;
   final String email;
+  final String name;
   final String role;
   final DateTime joinedAt;
 
@@ -11,6 +12,7 @@ class OrganizationMember {
     required this.organizationId,
     required this.userId,
     required this.email,
+    required this.name,
     required this.role,
     required this.joinedAt,
   });
@@ -21,6 +23,7 @@ class OrganizationMember {
       organizationId: json['organization_id'] as String,
       userId: json['user_id'] as String,
       email: json['email'] as String,
+      name: json['name'] as String,
       role: json['role'] as String,
       joinedAt: DateTime.parse(json['joined_at'] as String),
     );
@@ -32,6 +35,7 @@ class OrganizationMember {
       'organization_id': organizationId,
       'user_id': userId,
       'email': email,
+      'name': name,
       'role': role,
       'joined_at': joinedAt.toIso8601String(),
     };

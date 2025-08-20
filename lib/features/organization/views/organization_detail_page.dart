@@ -1,15 +1,11 @@
-import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
-import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_bloc.dart';
-import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_event.dart';
-import 'package:chalan_book_app/features/organization/bloc/organization_invite/organization_invite_state.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
 import 'package:chalan_book_app/features/organization/views/member_card.dart';
-import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
+import 'package:chalan_book_app/features/organization/views/qr_scanner_page.dart';
 import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
-import 'package:chalan_book_app/features/shared/widgets/loading_button.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
 import '../../../core/models/organization.dart';
 import '../../../main.dart';
 
@@ -24,12 +20,11 @@ class OrganizationDetailPage extends StatefulWidget {
 
 class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
   final _emailController = TextEditingController();
-  bool _isInviting = false;
 
   @override
   void initState() {
     super.initState();
-    context.read<OrganizationInviteBloc>().add(
+    context.read<OrganizationBloc>().add(
       LoadOrganizationMembers(widget.organization.id),
     );
   }
@@ -40,198 +35,258 @@ class _OrganizationDetailPageState extends State<OrganizationDetailPage> {
     super.dispose();
   }
 
-  Future<void> _sendInvite() async {
-    final email = _emailController.text.trim().toLowerCase();
-    if (email.isEmpty) {
-      context.showSnackbar('Please enter an email address', isError: true);
-      return;
-    }
+  // Future<void> _sendInvite() async {
+  //   final email = _emailController.text.trim().toLowerCase();
+  //   if (email.isEmpty) {
+  //     context.showSnackbar('Please enter an email address', isError: true);
+  //     return;
+  //   }
 
-    setState(() => _isInviting = true);
+  //   setState(() => _isInviting = true);
 
-    try {
-      final email = _emailController.text.trim().toLowerCase();
-      final orgId = widget.organization.id;
+  //   try {
+  //     final email = _emailController.text.trim().toLowerCase();
+  //     final orgId = widget.organization.id;
 
-      if (orgId.toString().isEmpty) {
-        throw Exception("Organization ID is missing!");
-      }
+  //     if (orgId.toString().isEmpty) {
+  //       throw Exception("Organization ID is missing!");
+  //     }
 
-      final inviteId = const Uuid().v4();
-      await supabase.from('organization_invites').insert({
-        'id': inviteId,
-        'organization_id': orgId,
-        'email': email,
-      });
+  //     final inviteId = const Uuid().v4();
+  //     await supabase.from('organization_invites').insert({
+  //       'id': inviteId,
+  //       'organization_id': orgId,
+  //       'email': email,
+  //     });
 
-      context.showSnackbar('✅ Invite sent to $email');
-      _emailController.clear();
-    } catch (e) {
-      context.showSnackbar('❌ Failed to send invite: $e', isError: true);
-    }
-  }
+  //     context.showSnackbar('✅ Invite sent to $email');
+  //     _emailController.clear();
+  //   } catch (e) {
+  //     context.showSnackbar('❌ Failed to send invite: $e', isError: true);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<OrganizationInviteBloc, OrganizationInviteState>(
+    return BlocConsumer<OrganizationBloc, OrganizationState>(
       listener: (context, state) {
-        if (state is OrganizationInviteFailure) {
-          context.showSnackbar(state.message, isError: true);
-        } else if (state is OrganizationInviteSent) {
-          context.showSnackbar('✅ Invite sent successfully!');
+        if (state is OrganizationFailure) {
+          context.showSnackbar(state.message ?? "", isError: true);
         }
-      },builder: (context, state) => Scaffold(
+      },
+      builder: (context, state) => Scaffold(
         appBar: AppBar(title: Text(widget.organization.name)),
-        body:  state is OrganizationInviteLoading ? Center(child: CircularProgressIndicator()) : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Organization Info
+        body: state is OrganizationLoading
+            ? Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Organization Info
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Colors.blue,
+                                  radius: 30,
+                                  child: Text(
+                                    widget.organization.name
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        widget.organization.name,
+                                        style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (widget.organization.description !=
+                                          null)
+                                        Text(
+                                          widget.organization.description!,
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      Text(
+                                        'Created ${formatDate(widget.organization.createdAt)}',
+                                        style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                    
+                    if (widget.organization.ownerId ==
+                        Supa().currentUserId) ...[
+                      const Text(
+                        'Add Member',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: Colors.blue,
-                                    radius: 30,
-                                    child: Text(
-                                      widget.organization.name
-                                          .substring(0, 1)
-                                          .toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                              Text(
+                                'Scan QR code to add new member',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              BlocBuilder<OrganizationBloc, OrganizationState>(
+                                builder: (context, state) {
+                                  if (state is QRScanningState) {
+                                    return Column(
                                       children: [
-                                        Text(
-                                          widget.organization.name,
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        if (widget.organization.description !=
-                                            null)
-                                          Text(
-                                            widget.organization.description!,
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                        Text(
-                                          'Created ${formatDate(widget.organization.createdAt)}',
-                                          style: TextStyle(
-                                            color: Colors.grey[500],
-                                            fontSize: 12,
-                                          ),
-                                        ),
+                                        const CircularProgressIndicator(),
+                                        const SizedBox(height: 8),
+                                        const Text('Ready to scan...'),
                                       ],
-                                    ),
-                                  ),
-                                ],
+                                    );
+                                  }
+
+                                  if (state is AddingMemberState) {
+                                    return Column(
+                                      children: [
+                                        const CircularProgressIndicator(),
+                                        const SizedBox(height: 8),
+                                        const Text('Adding member...'),
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          onPressed: () =>
+                                              _openQRScanner(context),
+                                          icon: const Icon(
+                                            Icons.qr_code_scanner,
+                                          ),
+                                          label: const Text('Scan QR'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _selectQRFromGallery(context),
+                                          icon: const Icon(Icons.image),
+                                          label: const Text('From Gallery'),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             ],
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 24),
+                    ],
 
-                      // Add Member Section
-                      if (widget.organization.ownerId == supabase.auth.currentUser?.id) ...[
-                        const Text(
-                          AppStrings.addMember,
-                          style: TextStyle(
+                    // Members List
+                    BlocBuilder<OrganizationBloc, OrganizationState>(
+                      builder: (context, state) {
+                        final count = state is OrganizationSuccess
+                            ? state.members.length
+                            : 0;
+                        return Text(
+                          'Members ($count)',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                CustomTextField(
-                                  controller: _emailController,
-                                  label: AppStrings.memberEmail,
-                                  keyboardType: TextInputType.emailAddress,
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: LoadingButton(
-                                    onPressed: _sendInvite,
-                                    isLoading: _isInviting,
-                                    text: AppStrings.invite,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+                        );
+                      },
+                    ),
 
-                      // Members List
-                      BlocBuilder<
-                        OrganizationInviteBloc,
-                        OrganizationInviteState
-                      >(
-                        builder: (context, state) {
-                          final count = state is OrganizationInviteSuccess
-                              ? state.members.length
-                              : 0;
-                          return Text(
-                            'Members ($count)',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    const SizedBox(height: 12),
+                    BlocBuilder<OrganizationBloc, OrganizationState>(
+                      builder: (context, state) {
+                        if (state is OrganizationLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
                           );
-                        },
-                      ),
-
-                      const SizedBox(height: 12),
-                      BlocBuilder<
-                        OrganizationInviteBloc,
-                        OrganizationInviteState
-                      >(
-                        builder: (context, state) {
-                          if (state is OrganizationInviteLoading) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          } else if (state is OrganizationInviteSuccess) {
-                            return Column(
-                              children: state.members
-                                  .map((m) => MemberCard(m))
-                                  .toList(),
-                            );
-                          } else if (state is OrganizationInviteFailure) {
-                            return Text(state.message);
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ],
-                  ),
+                        } else if (state is OrganizationSuccess) {
+                          return Column(
+                            children: state.members
+                                .map((m) => MemberCard(m))
+                                .toList(),
+                          );
+                        } else if (state is OrganizationFailure) {
+                          return Text(state.message ?? "");
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
                 ),
-      
+              ),
       ),
     );
+  }
+
+  void _openQRScanner(BuildContext context) {
+    context.read<OrganizationBloc>().add(ScanQRCode());
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => QRScannerPage(
+          onQRCodeScanned: (qrData) {
+            Navigator.pop(context);
+            context.read<OrganizationBloc>().add(
+              ProcessQRResult(
+                qrData: qrData,
+                organizationId: widget.organization.id,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _selectQRFromGallery(BuildContext context) {
+    context.read<OrganizationBloc>().add(SelectQRFromGallery());
   }
 }

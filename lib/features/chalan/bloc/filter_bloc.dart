@@ -1,13 +1,14 @@
 import 'dart:async';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/chalan.dart';
-import '../../../main.dart';
 import '../models/advanced_filter_model.dart';
 import 'filter_event.dart';
 import 'filter_state.dart';
 
 /// BLoC for filtering chalans locally
 class FilterBloc extends Bloc<FilterEvent, FilterState> {
+  final supa = Supa();
   Timer? _debounceTimer;
 
   FilterBloc() : super(const FilterInitialState()) {
@@ -265,7 +266,7 @@ class FilterBloc extends Bloc<FilterEvent, FilterState> {
     List<Chalan> chalans,
     AdvancedChalanFilter filter,
   ) {
-    final userId = supabase.auth.currentUser?.id;
+    final userId = supa.currentUserId;
 
     return chalans.where((chalan) {
       switch (filter.createdByFilter) {

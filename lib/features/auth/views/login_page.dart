@@ -1,8 +1,8 @@
 import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
-import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
-import 'package:chalan_book_app/features/auth/auth/auth_event.dart';
-import 'package:chalan_book_app/features/auth/auth/auth_state.dart';
+import 'package:chalan_book_app/features/auth/bloc/auth_bloc.dart';
+import 'package:chalan_book_app/features/auth/bloc/auth_event.dart';
+import 'package:chalan_book_app/features/auth/bloc/auth_state.dart';
 import 'package:chalan_book_app/features/auth/views/forgot_password.dart';
 import 'package:chalan_book_app/features/auth/views/signup_page.dart';
 import 'package:chalan_book_app/features/home/views/home_page.dart';
@@ -25,18 +25,12 @@ class LoginPage extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: BlocConsumer<AuthBloc, AuthState>(
-            listener: (_, state) {
+            listener: (context, state) {
               if (state is AuthSuccess) {
-                context.pushReplacement(
-                  // BlocProvider(
-                  //   create: (_) =>
-                  //       OrganizationBloc()..add(LoadOrganizationsRequested()),
-                  // ),
-                    // child:
-                     const HomePage(),
-                );
+                context.pushReplacement(const HomePage());
+              } else if (state is AuthFailure) {
+                context.showSnackbar(isError: true, state.message);
               }
-              if (state is AuthFailure) (msg) => context.showSnackbar(msg);
             },
             builder: (_, state) {
               final loading = state is AuthLoading;
@@ -71,9 +65,10 @@ class LoginPage extends StatelessWidget {
                       child: Text(AppStrings.dontHaveAccount),
                     ),
                     TextButton(
-                      onPressed: () => context.push(const ForgotPasswordScreen()),
+                      onPressed: () =>
+                          context.push(const ForgotPasswordScreen()),
                       child: Text(AppStrings.forgotPassword),
-                    )
+                    ),
                   ],
                 ),
               );

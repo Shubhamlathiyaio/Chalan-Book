@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:chalan_book_app/services/mega_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/models/chalan.dart';
@@ -9,10 +11,7 @@ import '../../../core/models/chalan.dart';
 class ChalanDetailPage extends StatelessWidget {
   final Chalan chalan;
 
-  const ChalanDetailPage({
-    super.key,
-    required this.chalan,
-  });
+  const ChalanDetailPage({super.key, required this.chalan});
 
   @override
   Widget build(BuildContext context) {
@@ -27,50 +26,25 @@ class ChalanDetailPage extends StatelessWidget {
                   onTap: () => _showFullScreenImage(context),
                   child: Container(
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                    ),
+                    decoration: BoxDecoration(color: Colors.grey[100]),
                     child: chalan.imageUrl != null
-                        ? Image.network(
-                            chalan.imageUrl!,
+                        ? MegaImageWidget(
+                            imageUrl: chalan.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.broken_image,
-                                      size: 64,
-                                      color: Colors.grey[400],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Image not available',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
                           )
                         : Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  Icons.receipt_long,
+                                  Icons.broken_image,
                                   size: 64,
                                   color: Colors.grey[400],
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'No image attached',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                  ),
+                                  'Image not available',
+                                  style: TextStyle(color: Colors.grey[600]),
                                 ),
                               ],
                             ),
@@ -151,11 +125,8 @@ class ChalanDetailPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      chalan.description??'',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.4,
-                      ),
+                      chalan.description ?? '',
+                      style: const TextStyle(fontSize: 16, height: 1.4),
                     ),
                   ],
                 ),
@@ -207,8 +178,8 @@ class ChalanDetailPage extends StatelessWidget {
           child: InteractiveViewer(
             child: Container(
               color: Colors.black,
-              child: Image.network(
-                chalan.imageUrl!,
+              child: MegaImageWidget(
+                imageUrl: chalan.imageUrl!,
                 fit: BoxFit.contain,
               ),
             ),
@@ -218,25 +189,38 @@ class ChalanDetailPage extends StatelessWidget {
     );
   }
 
-  Future<void> _shareChalan() async {
-    if (chalan.imageUrl == null) return;
+Future<void> _shareChalan() async {
+  if (chalan.imageUrl == null) return;
 
-    try {
-      final uri = Uri.parse(chalan.imageUrl!);
-      final response = await NetworkAssetBundle(uri).load(uri.path);
-      final bytes = response.buffer.asUint8List();
-
-      final tempDir = await getTemporaryDirectory();
-      final fileExtension = uri.path.endsWith('.png') ? 'png' : 'jpg';
-      final file = await File('${tempDir.path}/chalan_image.$fileExtension').create();
-      await file.writeAsBytes(bytes);
-
-      await Share.shareXFiles([XFile(file.path)]);  // text: 'Chalan Image'
-    } catch (e) {
-      // Handle error (e.g., show a snackbar)
+  try {
+    print('🔄 Getting image from MEGA...');
+    
+    // Use your existing MEGA service to get the image bytes
+    final bytes = await MegaImageService.getCompressedImage(chalan.imageUrl!);
+    
+    if (bytes == null) {
+      throw Exception('Failed to load image from MEGA');
     }
-  }
 
+    print('✅ Got image bytes: ${bytes.length}');
+
+    final tempDir = await getTemporaryDirectory();
+    final file = await File('${tempDir.path}/chalan_image.jpg').create();
+    await file.writeAsBytes(bytes);
+
+    print('✅ Image saved to: ${file.path}');
+
+    await Share.shareXFiles([XFile(file.path)], text: chalan.chalanNumber);
+    
+    print('✅ Sharing initiated');
+    
+  } catch (e) {
+    print('❌ Error sharing chalan: $e');
+    // Optionally show snackbar here with context
+  }
+}
+
+  // Format date to dd/mm/yyyy
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }

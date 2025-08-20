@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:chalan_book_app/core/models/organization.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -29,6 +30,8 @@ class UpdateChalanEvent extends ChalanEvent {
   UpdateChalanEvent(this.chalan);
 }
 
+class ShowChalanLoading extends ChalanEvent {}
+
 class DeleteChalanEvent extends ChalanEvent {
   final Chalan chalan;
   DeleteChalanEvent(this.chalan);
@@ -52,7 +55,6 @@ class LoadMissingChalanNumbers extends ChalanEvent {
   final List<Chalan> existingChalans;
   LoadMissingChalanNumbers(this.existingChalans);
 }
-
 
 class PickImageFromCamera extends ChalanEvent {}
 
@@ -131,6 +133,7 @@ class ChalanOperationSuccess extends ChalanState {
 // ################################################################################
 class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
   final OrganizationBloc organizationBloc;
+  final supa = Supa();
   StreamSubscription? _organizationSubscription;
 
   ChalanBloc({required this.organizationBloc}) : super(ChalanInitial()) {
@@ -204,7 +207,7 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     emit(ChalanLoading());
 
     try {
-      final response = await supabase
+      final response = await supa
           .from(AppKeys.chalansTable)
           .select()
           .eq('organization_id', event.organization.id)
@@ -217,12 +220,19 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
         return;
       }
 
-      final missing = _calculateMissingNumbers(chalans);
-      final next = _getNextAvailableNumber(missing, chalans);
+      // 🔄 Optional: Validate Mega URLs (remove invalid ones)
+      final validChalans = chalans.where((chalan) {
+        return chalan.imageUrl == null ||
+            chalan.imageUrl!.contains('mega.nz') ||
+            chalan.imageUrl!.contains('mega.co.nz');
+      }).toList();
+
+      final missing = _calculateMissingNumbers(validChalans);
+      final next = _getNextAvailableNumber(missing, validChalans);
 
       emit(
         ChalanLoaded(
-          chalans: chalans,
+          chalans: validChalans,
           missingNumbers: missing,
           nextAvailableNumber: next,
           selectedNumber: null,
@@ -240,36 +250,35 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     Emitter<ChalanState> emit,
   ) async {
     emit(ChalanLoading());
+
     try {
-      await supabase.from(AppKeys.chalansTable).insert(event.chalan.toJson());
+      // Insert the chalan
+      await supa.from(AppKeys.chalansTable).insert(event.chalan.toJson());
 
-      if (state is ChalanLoaded) {
-        final current = (state as ChalanLoaded);
-        final updated = [...current.chalans, event.chalan];
+      // Reload all chalans from database to get fresh data
+      final response = await supa
+          .from(AppKeys.chalansTable)
+          .select()
+          .eq('organization_id', event.chalan.organizationId)
+          .order('chalan_number', ascending: true);
 
-        updated.sort((a, b) {
-          final aNum = int.tryParse(a.chalanNumber) ?? 0;
-          final bNum = int.tryParse(b.chalanNumber) ?? 0;
-          return aNum.compareTo(bNum);
-        });
+      final chalans = response.map((e) => Chalan.fromJson(e)).toList();
 
-        final missing = _calculateMissingNumbers(updated);
-        final next = _getNextAvailableNumber(missing, updated);
+      final missing = _calculateMissingNumbers(chalans);
+      final next = _getNextAvailableNumber(missing, chalans);
 
-        emit(
-          ChalanOperationSuccess(
-            'Chalan added successfully!',
-            updated,
-            missingNumbers: missing,
-            nextAvailableNumber: next,
-            selectedNumber: current.selectedNumber,
-            selectedImage: current.selectedImage,
-            selectedDate: current.selectedDate,
-          ),
-        );
-      }
+      emit(
+        ChalanLoaded(
+          chalans: chalans,
+          missingNumbers: missing,
+          nextAvailableNumber: next,
+          selectedNumber: null,
+          selectedImage: null,
+          selectedDate: DateTime.now(),
+        ),
+      );
     } catch (e) {
-      emit(ChalanError('Error adding chalan: \$e'));
+      emit(ChalanError('Error adding chalan: $e'));
     }
   }
 
@@ -294,7 +303,7 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     Emitter<ChalanState> emit,
   ) async {
     try {
-      await supabase
+      await supa
           .from(AppKeys.chalansTable)
           .update(event.chalan.toJson())
           .eq('id', event.chalan.id);
@@ -335,12 +344,12 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
       if (event.chalan.imageUrl != null) {
         final uri = Uri.parse(event.chalan.imageUrl!);
         final fileName = uri.pathSegments.last;
-        await supabase.storage.from(AppKeys.chalanImagesBucket).remove([
+        await supa.storage.from(AppKeys.chalanImagesBucket).remove([
           fileName,
         ]);
       }
 
-      await supabase
+      await supa
           .from(AppKeys.chalansTable)
           .delete()
           .eq('id', event.chalan.id);
@@ -482,8 +491,20 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
           missingNumbers: current.missingNumbers,
           nextAvailableNumber: current.nextAvailableNumber,
           selectedNumber: current.selectedNumber,
-          selectedImage: imageFile,
+          selectedImage: imageFile, // ✅ Set the picked image
           selectedDate: current.selectedDate,
+        ),
+      );
+    } else {
+      // ✅ Handle case when state is not ChalanLoaded yet
+      emit(
+        ChalanLoaded(
+          chalans: [],
+          missingNumbers: [],
+          nextAvailableNumber: 1,
+          selectedNumber: null,
+          selectedImage: imageFile, // ✅ Set the picked image
+          selectedDate: DateTime.now(),
         ),
       );
     }
@@ -508,8 +529,20 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
           missingNumbers: current.missingNumbers,
           nextAvailableNumber: current.nextAvailableNumber,
           selectedNumber: current.selectedNumber,
-          selectedImage: imageFile,
+          selectedImage: imageFile, // ✅ Set the picked image
           selectedDate: current.selectedDate,
+        ),
+      );
+    } else {
+      // ✅ Handle case when state is not ChalanLoaded yet
+      emit(
+        ChalanLoaded(
+          chalans: [],
+          missingNumbers: [],
+          nextAvailableNumber: 1,
+          selectedNumber: null,
+          selectedImage: imageFile, // ✅ Set the picked image
+          selectedDate: DateTime.now(),
         ),
       );
     }

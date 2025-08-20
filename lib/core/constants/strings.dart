@@ -30,4 +30,6 @@ class AppStrings {
   static const String switchOrganization = 'Switch Organization';
   static const String noOrganizations = 'No organizations found';
   static const String noChalans = 'No chalans found';
+  static const String name = 'Name';
+
 }

@@ -1,60 +1,18 @@
+import 'dart:io';
+
 import 'package:chalan_book_app/features/auth/views/splash_page.dart';
+import 'package:chalan_book_app/features/profile/bloc/profile_bloc.dart';
+import 'package:chalan_book_app/services/auth_services.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/extensions/context_extension.dart';
 import '../../theme/bloc/theme_bloc.dart';
 import '../../../main.dart';
-
-// Event
-abstract class ProfileEvent {}
-
-class ProfileLoaded extends ProfileEvent {
-  final User user;
-  ProfileLoaded(this.user);
-}
-
-class ToggleEditingEvent extends ProfileEvent {}
-
-// State
-class ProfileState {
-  final String userName;
-  final bool isEditing;
-  const ProfileState({this.userName = '', this.isEditing = false});
-
-  ProfileState copyWith({String? userName, bool? isEditing}) {
-    return ProfileState(
-      userName: userName ?? this.userName,
-      isEditing: isEditing ?? this.isEditing,
-    );
-  }
-}
-
-class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
-  ProfileBloc() : super(const ProfileState()) {
-    on<ProfileLoaded>(_onProfileLoaded);
-    on<ToggleEditingEvent>(_onToggleEditing);
-  }
-
-  Future<void> _onProfileLoaded(
-    ProfileLoaded event,
-    Emitter<ProfileState> emit,
-  ) async {
-    final user = event.user;
-    emit(
-      state.copyWith(
-        // user: user,
-      ),
-    );
-  }
-
-  Future<void> _onToggleEditing(
-    ToggleEditingEvent event,
-    Emitter<ProfileState> emit,
-  ) async {
-    emit(state.copyWith(isEditing: !state.isEditing));
-  }
-}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -64,12 +22,13 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final supa = Supa();
   final _nameController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    final user = supabase.auth.currentUser;
+    final user = supa.currentUser;
     _nameController.text = user?.userMetadata?['name'] ?? '';
   }
 
@@ -81,7 +40,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = supabase.auth.currentUser;
+    final user = supa.currentUser;
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -89,7 +48,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            
+
             // Profile Avatar
             CircleAvatar(
               radius: 60,
@@ -102,9 +61,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Profile Info Card
             BlocBuilder<ProfileBloc, ProfileState>(
               builder: (context, state) {
@@ -126,10 +85,12 @@ class _ProfilePageState extends State<ProfilePage> {
                             IconButton(
                               onPressed: () {
                                 context.read<ProfileBloc>().add(
-                                      ToggleEditingEvent(),
-                                    );
+                                  ToggleEditingEvent(),
+                                );
                               },
-                              icon: Icon(state.isEditing ? Icons.close : Icons.edit),
+                              icon: Icon(
+                                state.isEditing ? Icons.close : Icons.edit,
+                              ),
                             ),
                           ],
                         ),
@@ -144,9 +105,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             prefixIcon: Icon(Icons.person),
                           ),
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Email Field (Read-only)
                         TextFormField(
                           initialValue: user?.email ?? '',
@@ -156,13 +117,13 @@ class _ProfilePageState extends State<ProfilePage> {
                             prefixIcon: Icon(Icons.email),
                           ),
                         ),
-                        
+
                         if (state.isEditing) ...[
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton(
-                              onPressed: _saveProfile,
+                              onPressed: null, //_saveProfile,
                               child: const Text('Save Changes'),
                             ),
                           ),
@@ -173,9 +134,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               },
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Settings Card
             Card(
               child: Padding(
@@ -190,22 +151,28 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Theme Toggle
                     BlocBuilder<ThemeBloc, ThemeState>(
                       builder: (context, state) {
                         return SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           secondary: Icon(
-                            state.themeMode==ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+                            state.themeMode == ThemeMode.dark
+                                ? Icons.dark_mode
+                                : Icons.light_mode,
                           ),
                           title: Text(
-                            state.themeMode==ThemeMode.dark ? 'Light Mode' : 'Dark Mode',
+                            state.themeMode == ThemeMode.dark
+                                ? 'Light Mode'
+                                : 'Dark Mode',
                           ),
                           subtitle: Text(
-                            state.themeMode==ThemeMode.dark ? 'Dark theme enabled' : 'Light theme enabled',
+                            state.themeMode == ThemeMode.dark
+                                ? 'Dark theme enabled'
+                                : 'Light theme enabled',
                           ),
-                          value: state.themeMode==ThemeMode.dark,
+                          value: state.themeMode == ThemeMode.dark,
                           onChanged: (value) {
                             context.read<ThemeBloc>().add(ToggleThemeEvent());
                           },
@@ -216,12 +183,73 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-         
-            
+            // QR Code Card (add this after the Settings Card)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My Identity',
+                      style: context.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This is your unique QR code that you can use to enter in others Organization.',
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // QR Code
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: QrImageView(
+                          data: user?.id ?? '',
+                          version: QrVersions.auto,
+                          size: 200.0,
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Share Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _shareQRCode(user?.id),
+                        icon: const Icon(Icons.share),
+                        label: const Text('Share QR Code'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // Log Out Button
             ElevatedButton(
               onPressed: () async {
-                await supabase.auth.signOut();
+                await AuthService().signOut();
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (context) => const SplashPage()),
                 );
@@ -234,21 +262,59 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _saveProfile() async {
+  // Future<void> _saveProfile() async {
+  //   try {
+  //     await supa.updateUser(
+  //       UserAttributes(data: {'name': _nameController.text.trim()}),
+  //     );
+
+  //     context.read<ProfileBloc>().add(ToggleEditingEvent());
+  //     context.showSnackbar('Profile updated successfully!');
+  //   } catch (e) {
+  //     context.showSnackbar('Error updating profile: $e', isError: true);
+  //   }
+  // }
+
+  Future<void> _shareQRCode(String? userId) async {
+    if (userId == null) return;
+
     try {
-      await supabase.auth.updateUser(
-        UserAttributes(
-          data: {'name': _nameController.text.trim()},
-        ),
+      // Generate QR code as image
+      final qrValidationResult = QrValidator.validate(
+        data: userId,
+        version: QrVersions.auto,
+        errorCorrectionLevel: QrErrorCorrectLevel.L,
       );
-      
-      context.read<ProfileBloc>().add(
-        ToggleEditingEvent(),
+
+      if (qrValidationResult.status != QrValidationStatus.valid) {
+        context.showSnackbar('Invalid QR code data', isError: true);
+        return;
+      }
+
+      final qrCode = qrValidationResult.qrCode!;
+      final painter = QrPainter.withQr(
+        qr: qrCode,
+        color: Colors.black,
+        emptyColor: Colors.white,
       );
-      context.showSnackbar('Profile updated successfully!');
+
+      // Create image from QR code
+      final picData = await painter.toImageData(400);
+      if (picData == null) {
+        context.showSnackbar('Failed to generate QR code', isError: true);
+        return;
+      }
+
+      // Save to temporary file
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/organization_invite_qr.png');
+      await file.writeAsBytes(picData.buffer.asUint8List());
+
+      // Share the QR code
+      await Share.shareXFiles([XFile(file.path)]);
     } catch (e) {
-      context.showSnackbar('Error updating profile: $e', isError: true);
+      print('Error sharing QR code: $e');
+      context.showSnackbar('Error sharing QR code', isError: true);
     }
   }
 }
-

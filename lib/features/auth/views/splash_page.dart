@@ -1,8 +1,8 @@
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
-import 'package:chalan_book_app/features/auth/auth/auth_bloc.dart';
+import 'package:chalan_book_app/features/auth/bloc/auth_bloc.dart';
+import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../main.dart';
 import '../../home/views/home_page.dart';
 import 'login_page.dart';
 
@@ -14,6 +14,7 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  final supa = Supa();
   @override
   void initState() {
     super.initState();
@@ -23,25 +24,23 @@ class _SplashPageState extends State<SplashPage> {
   void _checkAuthStatus() async {
     await Future.delayed(const Duration(seconds: 2));
 
-    final session = supabase.auth.currentSession;
+    final session = supa.currentSession;
     if (mounted) {
       if (session != null) {
         context.pushReplacement(
           // BlocProvider(
           //   create: (_) =>
           //       OrganizationBloc()..add(LoadOrganizationsRequested()),
-          //   child: 
+          //   child:
           // ),
-            const HomePage(),
+          const HomePage(),
         );
       } else {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => BlocProvider(
-              create: (_) => AuthBloc(),
-              child: LoginPage(),
-            ),
+            builder: (_) =>
+                BlocProvider(create: (_) => AuthBloc(), child: LoginPage()),
           ),
         );
       }
