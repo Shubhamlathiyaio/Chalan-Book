@@ -1,4 +1,4 @@
-import '../models/advanced_filter_model.dart';
+import 'package:chalan_book_app/features/chalan/models/advanced_filter_model.dart';
 
 /// Base class for all advanced filter events
 abstract class FilterEvent {}

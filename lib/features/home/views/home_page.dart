@@ -1,8 +1,7 @@
 import 'package:chalan_book_app/core/constants/app_colors.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
-import 'package:chalan_book_app/core/models/organization.dart';
 import 'package:chalan_book_app/features/chalan/views/chalan_list_page.dart';
-import 'package:chalan_book_app/fetch_old_data/image_setup.dart';
+import 'package:chalan_book_app/features/organization/widgets/organization_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../organization/bloc/organization_bloc.dart';
@@ -28,80 +27,78 @@ class _HomePageState extends State<HomePage> {
           return BlocBuilder<NavBarCubit, int>(
             builder: (context, currentIndex) {
               final pages = [
-                ChalanListPage(organization: orgState.currentOrg),
-                OrganizationListPage(
-                  onOrganizationCreated: () {
-                    context.read<OrganizationBloc>().add(LoadOrganizations());
-                  },
-                ),
+                ChalanListPage(),
+                OrganizationListPage(),
                 const ProfilePage(),
-                const ImageSetupPage(),
+                // const ImageSetupPage(),
+                // const ChalanUploadPage(),
+                //  OrganizationSelector(currentOrganization: orgState.currentOrg, organizations: orgState.organizations, onOrganizationChanged: (org) {
+                //   context.read<OrganizationBloc>().add(SelectOrganization(org));
+                // }),
               ];
 
-              return Scaffold(
-                appBar: AppBar(
-                  title: Text(_getAppBarTitle(currentIndex, orgState)),
-                  backgroundColor: context.colors.surface,
-                  elevation: 0,
-                  scrolledUnderElevation: 1,
-                  actions: (currentIndex == 0)
-                      ? [
-                          BlocBuilder<OrganizationBloc, OrganizationState>(
-                            builder: (context, state) {
-                              return PopupMenuButton<Organization>(
-                                onSelected: (organization) {
-                                  context.read<OrganizationBloc>().add(
-                                    SelectOrganization(
-                                      organization,
-                                    ),
-                                  );
-                                },
-                                itemBuilder: (context) {
-                                  return orgState.organizations
-                                      .map(
-                                        (organization) => PopupMenuItem<Organization>(
-                                          value: organization,
-                                          child: Text(organization.name),
-                                        ),
-                                      )
-                                      .toList();
-                                },
-                              );
-                            },
-                          ),
-                        ]
-                      : null,
-                ),
-                drawer: const AppDrawer(),
-                body: IndexedStack(index: currentIndex, children: pages),
-                bottomNavigationBar: NavigationBar(
-                  indicatorColor: AppColors.primaryAlpha30,
-                  selectedIndex: currentIndex,
-                  onDestinationSelected: (index) {
-                    context.read<NavBarCubit>().updateTab(index);
-                  },
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long),
-                      label: 'Chalans',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.business_outlined),
-                      selectedIcon: Icon(Icons.business),
-                      label: 'Organizations',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
-                      label: 'Profile',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.settings_outlined),
-                      selectedIcon: Icon(Icons.settings),
-                      label: 'Settings',
-                    )
-                  ],
+              return PopScope(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, result) {
+                  if (!didPop) {
+                    if (currentIndex != 0) {
+                      context.read<NavBarCubit>().updateTab(0);
+                    } else {
+                      Navigator.of(context).maybePop();
+                    }
+                  }
+                },
+                child: Scaffold(
+                  appBar: AppBar(
+                    title: Text(_getAppBarTitle(currentIndex, orgState)),
+                    backgroundColor: context.colors.surface,
+                    elevation: 0,
+                    scrolledUnderElevation: 1,
+                    actions: (currentIndex == 0)
+                        ? [
+                            OrganizationSelector(
+                              currentOrganization: orgState.currentOrg,
+                              organizations: orgState.organizations,
+                              onOrganizationChanged: (org) {
+                                context.read<OrganizationBloc>().add(
+                                  SelectOrganization(org),
+                                );
+                              },
+                            ),
+                          ]
+                        : null,
+                  ),
+                  drawer: const AppDrawer(),
+                  body: IndexedStack(index: currentIndex, children: pages),
+                  bottomNavigationBar: NavigationBar(
+                    indicatorColor: AppColors.primaryAlpha30,
+                    selectedIndex: currentIndex,
+                    onDestinationSelected: (index) {
+                      context.read<NavBarCubit>().updateTab(index);
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.receipt_long_outlined),
+                        selectedIcon: Icon(Icons.receipt_long),
+                        label: 'Chalans',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.business_outlined),
+                        selectedIcon: Icon(Icons.business),
+                        label: 'Organizations',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_outline),
+                        selectedIcon: Icon(Icons.person),
+                        label: 'Profile',
+                      ),
+                      // NavigationDestination(
+                      //   icon: Icon(Icons.settings_outlined),
+                      //   selectedIcon: Icon(Icons.settings),
+                      //   label: 'Settings',
+                      // )
+                    ],
+                  ),
                 ),
               );
             },

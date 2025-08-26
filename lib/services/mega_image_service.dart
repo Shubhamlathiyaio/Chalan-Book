@@ -10,7 +10,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 
-
 class MegaImageService {
   static const String _uploadFunctionUrl = AppKeys.uploadToMegaUrl;
   static const String _downloadFunctionUrl = AppKeys.getMegaImageUrl;
@@ -31,8 +30,7 @@ class MegaImageService {
         'POST',
         Uri.parse(_uploadFunctionUrl),
       );
-      request.headers['Authorization'] =
-          'Bearer ${Supa().authToken}';
+      request.headers['Authorization'] = 'Bearer ${Supa().authToken}';
       request.headers['apikey'] = AppKeys.newSupabaseAnonKey;
 
       // Add compressed image
@@ -60,68 +58,68 @@ class MegaImageService {
     }
   }
 
-   /// Upload image directly from bytes (Web-compatible)
- static Future<String?> uploadImageBytes({
-  required Uint8List bytes,
-  String? fileName,
-  int quality = 85,
-}) async {
-  try {
-    print('🔄 Uploading image from bytes...');
+  /// Upload image directly from bytes (Web-compatible)
+  static Future<String?> uploadImageBytes({
+    required Uint8List bytes,
+    String? fileName,
+    int quality = 85,
+  }) async {
+    try {
+      print('🔄 Uploading image from bytes...');
 
-    // Temporary file for compression
-    final tempDir = await getTemporaryDirectory();
-    final tempFile = File(
-      "${tempDir.path}/${fileName ?? "upload_${DateTime.now().millisecondsSinceEpoch}.jpg"}",
-    );
-    await tempFile.writeAsBytes(bytes);
+      // Temporary file for compression
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File(
+        "${tempDir.path}/${fileName ?? "upload_${DateTime.now().millisecondsSinceEpoch}.jpg"}",
+      );
+      await tempFile.writeAsBytes(bytes);
 
-    // Compress before upload
-    final compressedFile = await FlutterImageCompress.compressAndGetFile(
-      tempFile.path,
-      "${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg",
-      quality: quality,
-      minWidth: 800,
-      minHeight: 600,
-    );
+      // Compress before upload
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        tempFile.path,
+        "${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg",
+        quality: quality,
+        minWidth: 800,
+        minHeight: 600,
+      );
 
-    if (compressedFile == null) {
-      print('❌ Compression failed');
+      if (compressedFile == null) {
+        print('❌ Compression failed');
+        return null;
+      }
+
+      // Create multipart request
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(_uploadFunctionUrl),
+      );
+      request.headers['Authorization'] = 'Bearer ${Supa().authToken}';
+      request.headers['apikey'] = AppKeys.newSupabaseAnonKey;
+
+      // Add compressed file
+      request.files.add(
+        await http.MultipartFile.fromPath('image', compressedFile.path),
+      );
+
+      // Send request
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseBody);
+        if (data['success']) {
+          print('✅ Image uploaded: ${data['url']}');
+          return data['url'];
+        }
+      }
+
+      print('❌ Upload failed: $responseBody');
+      return null;
+    } catch (e) {
+      print('❌ Upload error: $e');
       return null;
     }
-
-    // Create multipart request
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(_uploadFunctionUrl),
-    );
-    request.headers['Authorization'] = 'Bearer ${Supa().authToken}';
-    request.headers['apikey'] = AppKeys.newSupabaseAnonKey;
-
-    // Add compressed file
-    request.files.add(
-      await http.MultipartFile.fromPath('image', compressedFile.path),
-    );
-
-    // Send request
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(responseBody);
-      if (data['success']) {
-        print('✅ Image uploaded: ${data['url']}');
-        return data['url'];
-      }
-    }
-
-    print('❌ Upload failed: $responseBody');
-    return null;
-  } catch (e) {
-    print('❌ Upload error: $e');
-    return null;
   }
-}
 
   /// Get compressed image from Mega URL via Edge Function
   static Future<Uint8List?> getCompressedImage(
@@ -134,8 +132,7 @@ class MegaImageService {
       final response = await http.post(
         Uri.parse(_downloadFunctionUrl),
         headers: {
-          'Authorization':
-              'Bearer ${Supa().authToken}',
+          'Authorization': 'Bearer ${Supa().authToken}',
           'apikey': AppKeys.newSupabaseAnonKey,
           'Content-Type': 'application/json',
         },
@@ -172,6 +169,7 @@ class MegaImageService {
       return null;
     }
   }
+
 }
 // Create new file: lib/widgets/mega_image_widget.dart
 

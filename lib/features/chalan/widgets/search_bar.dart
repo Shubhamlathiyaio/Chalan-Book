@@ -5,8 +5,6 @@ import 'package:chalan_book_app/features/chalan/bloc/filter_bloc.dart';
 import 'package:chalan_book_app/features/chalan/bloc/filter_event.dart';
 import 'package:chalan_book_app/features/chalan/bloc/filter_state.dart';
 import 'package:chalan_book_app/features/chalan/models/advanced_filter_model.dart';
-import 'package:chalan_book_app/features/chalan/models/filter.dart'
-    hide SortOrder, CreatedByFilter, SortBy;
 import 'package:chalan_book_app/features/chalan/widgets/filter_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -70,7 +68,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: context.colors.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(8.r),
                         border: Border.all(color: context.colors.outline),
                       ),
                       child: TextField(
@@ -183,7 +181,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     if (filter.fromDate != null || filter.toDate != null) {
       chips.add(
         _buildFilterChip(
-          label: _getDateRangeText(filter as Filter),
+          label: _getDateRangeText(filter),
           onRemove: () {
             context.read<FilterBloc>().add(
               SetDateRangeFilterEvent(fromDate: null, toDate: null),
@@ -196,7 +194,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     if (filter.selectedMonth != null) {
       chips.add(
         _buildFilterChip(
-          label: _getMonthText(filter as Filter),
+          label: _getMonthText(filter),
           onRemove: () {
             context.read<FilterBloc>().add(SetMonthFilterEvent(month: null));
           },
@@ -207,7 +205,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     if (filter.fromChalanNumber != null || filter.toChalanNumber != null) {
       chips.add(
         _buildFilterChip(
-          label: _getChalanRangeText(filter as Filter),
+          label: _getChalanRangeText(filter),
           onRemove: () {
             context.read<FilterBloc>().add(
               SetChalanNumberRangeFilterEvent(fromNumber: null, toNumber: null),
@@ -261,7 +259,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     );
   }
 
-  String _getDateRangeText(Filter filter) {
+  String _getDateRangeText(AdvancedChalanFilter filter) {
     if (filter.fromDate != null && filter.toDate != null) {
       return '📅 ${_formatDate(filter.fromDate!)} - ${_formatDate(filter.toDate!)}';
     } else if (filter.fromDate != null) {
@@ -271,7 +269,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     }
   }
 
-  String _getMonthText(Filter filter) {
+  String _getMonthText(AdvancedChalanFilter filter) {
     final months = [
       'Jan',
       'Feb',
@@ -289,7 +287,7 @@ class _AdvancedSearchBarState extends State<AdvancedSearchBar> {
     return '🗓️ ${months[filter.selectedMonth! - 1]} ${filter.selectedYear}';
   }
 
-  String _getChalanRangeText(Filter filter) {
+  String _getChalanRangeText(AdvancedChalanFilter filter) {
     if (filter.fromChalanNumber != null && filter.toChalanNumber != null) {
       return '🔢 #${filter.fromChalanNumber} - #${filter.toChalanNumber}';
     } else if (filter.fromChalanNumber != null) {

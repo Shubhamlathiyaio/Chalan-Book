@@ -9,6 +9,8 @@ import 'package:chalan_book_app/features/chalan/models/advanced_filter_model.dar
 import 'package:chalan_book_app/features/chalan/views/add_chalan_page.dart';
 import 'package:chalan_book_app/features/chalan/widgets/search_bar.dart';
 import 'package:chalan_book_app/features/chalan/views/chalan_detail_page.dart';
+import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
+import 'package:chalan_book_app/features/shared/bloc/nav_bar_cubit.dart';
 import 'package:chalan_book_app/features/shared/local_bg/preference_helper.dart';
 import 'package:chalan_book_app/features/shared/widgets/empty_state.dart';
 import 'package:chalan_book_app/features/shared/widgets/loading.dart';
@@ -23,57 +25,59 @@ import '../../../../core/models/organization.dart';
 
 class ChalanListPage extends StatelessWidget {
   final supa = Supa();
-  final Organization? organization;
-ChalanListPage({super.key, required this.organization});
+  ChalanListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (organization == null) {
-      return EmptyState(
-        icon: Icons.business,
-        title: 'No Organization Selected',
-        subtitle: 'Please select or create an organization first',
-        actionText: 'Go to Organizations',
-        onAction: () {
-          context.showSnackbar('Go to the Organizations tab');
-        },
-      );
-    }
-
-    return BlocListener<ChalanBloc, ChalanState>(
-      listener: (context, state) {
-        // Update filter bloc when chalans are loaded
-        if (state is ChalanLoaded || state is ChalanOperationSuccess) {
-          final chalans = state is ChalanLoaded
-              ? state.chalans
-              : (state as ChalanOperationSuccess).chalans;
-
-          context.read<FilterBloc>().updateOriginalChalans(chalans);
+    return BlocBuilder<OrganizationBloc, OrganizationState>(
+      builder: (context, orgState) {
+        // First check organization
+        if (orgState.currentOrg == null) {
+          return EmptyState(
+            icon: Icons.business,
+            title: 'No Organization Selected',
+            subtitle: 'Please select or create an organization first',
+            actionText: 'Go to Organizations',
+            onAction: () {
+              context.read<NavBarCubit>().updateTab(1);
+            },
+          );
         }
 
-        // Show error/success messages
-        if (state is ChalanError) {
-          context.showSnackbar(state.message);
-        } else if (state is ChalanOperationSuccess) {
-          context.showSnackbar(state.message);
-        }
+        // If organization exists, show chalan content
+        return BlocListener<ChalanBloc, ChalanState>(
+          listener: (context, state) {
+            // Update filter bloc when chalans are loaded
+            if (state is ChalanLoaded) {
+              context.read<FilterBloc>().updateOriginalChalans(state.chalans);
+            }
+
+            // Show error/success messages
+            if (state is ChalanError) context.showSnackbar(state.message);
+          },
+          child: Scaffold(
+            backgroundColor: context.colors.surface,
+            body: Column(
+              children: [
+                // Advanced Search Bar
+                const AdvancedSearchBar(),
+
+                // Results Summary
+                _buildResultsSummary(context),
+
+                // Chalan List
+                Expanded(
+                  child: _buildChalanList(context, orgState.currentOrg!),
+                ),
+              ],
+            ),
+            floatingActionButton: _buildFloatingActionButton(
+              context,
+              orgState.currentOrg!,
+            ),
+          ),
+        );
       },
-      child: Scaffold(
-        backgroundColor: context.colors.surface,
-        body: Column(
-          children: [
-            // Advanced Search Bar
-            const AdvancedSearchBar(),
-
-            // Results Summary
-            _buildResultsSummary(context),
-
-            // Chalan List
-            Expanded(child: _buildChalanList(context)),
-          ],
-        ),
-        floatingActionButton: _buildFloatingActionButton(context),
-      ),
     );
   }
 
@@ -85,41 +89,47 @@ ChalanListPage({super.key, required this.organization});
         final totalCount = state.originalChalans.length;
         final hasFilters = state.filter.hasActiveFilters;
 
-        return Container(
-          padding: edge.h16.v8,
-          child: Row(
-            children: [
-              Text(
-                hasFilters
-                    ? 'Showing $filteredCount of $totalCount chalans'
-                    : '$totalCount ${totalCount == 1 ? 'chalan' : 'chalans'}',
-                style: poppins.w500.fs12.textColor(
-                  context.colors.onSurface.withAlpha(224),
-                ),
-              ),
-              const Spacer(),
-              if (hasFilters)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent3.withAlpha(25),
-                    borderRadius: BorderRadius.circular(12.r),
+        return BlocBuilder<ChalanBloc, ChalanState>(
+          builder: (context, chalanState) {
+            return Container(
+              padding: edge.h16.v8,
+              child: Row(
+                children: [
+                  Text(
+                    hasFilters
+                        ? 'Showing $filteredCount of $totalCount chalans'
+                        : '$totalCount ${totalCount == 1 ? 'chalan' : 'chalans'}',
+                    style: poppins.w500.fs12.textColor(
+                      context.colors.onSurface.withAlpha(224),
+                    ),
                   ),
-                ),
-            ],
-          ),
+                  const Spacer(),
+                  if (hasFilters)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent3.withAlpha(25),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
   }
 
   /// Build chalan list
-  Widget _buildChalanList(BuildContext context) {
+  Widget _buildChalanList(BuildContext context, Organization organization) {
     return BlocBuilder<FilterBloc, FilterState>(
       builder: (context, filterState) {
         return BlocBuilder<ChalanBloc, ChalanState>(
           builder: (context, chalanState) {
-            // Show loading state
             if (chalanState is ChalanInitial || chalanState is ChalanLoading) {
               return LoadingWidget(
                 message: 'Loading your chalans...',
@@ -130,7 +140,11 @@ ChalanListPage({super.key, required this.organization});
 
             // Show error state
             if (chalanState is ChalanError) {
-              return _buildErrorState(chalanState.message, context);
+              return _buildErrorState(
+                chalanState.message,
+                context,
+                organization,
+              );
             }
 
             // Show empty state for no chalans
@@ -140,7 +154,7 @@ ChalanListPage({super.key, required this.organization});
                 title: 'No Chalans Found',
                 subtitle: 'Add your first chalan to get started',
                 actionText: 'Add Chalan',
-                onAction: () => _navigateToAddChalan(context),
+                onAction: () => _navigateToAddChalan(context, organization),
               );
             }
 
@@ -174,7 +188,7 @@ ChalanListPage({super.key, required this.organization});
             return RefreshIndicator(
               onRefresh: () async {
                 context.read<ChalanBloc>().add(
-                  RefreshChalansEvent(organization!),
+                  RefreshChalansEvent(organization),
                 );
               },
               color: context.colors.primary,
@@ -182,8 +196,12 @@ ChalanListPage({super.key, required this.organization});
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                 itemCount: chalansToShow.length,
                 itemBuilder: (context, index) {
-                  final chalan = chalansToShow[index];
-                  return _buildChalanCard(context, chalan, index);
+                  return _buildChalanCard(
+                    context,
+                    chalansToShow[index],
+                    index,
+                    organization,
+                  );
                 },
               ),
             );
@@ -194,7 +212,11 @@ ChalanListPage({super.key, required this.organization});
   }
 
   /// Build error state widget
-  Widget _buildErrorState(String message, BuildContext context) {
+  Widget _buildErrorState(
+    String message,
+    BuildContext context,
+    Organization organization,
+  ) {
     return Center(
       child: Container(
         margin: EdgeInsets.all(24.w),
@@ -231,7 +253,7 @@ ChalanListPage({super.key, required this.organization});
               SizedBox(height: 24.h),
               ElevatedButton.icon(
                 onPressed: () => context.read<ChalanBloc>().add(
-                  LoadChalansEvent(organization!),
+                  LoadChalansEvent(organization),
                 ),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
@@ -251,7 +273,12 @@ ChalanListPage({super.key, required this.organization});
   }
 
   /// Build individual chalan card
-  Widget _buildChalanCard(BuildContext context, Chalan chalan, int index) {
+  Widget _buildChalanCard(
+    BuildContext context,
+    Chalan chalan,
+    int index,
+    Organization organization,
+  ) {
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 300 + (index * 50)),
       tween: Tween(begin: 0.0, end: 1.0),
@@ -283,7 +310,7 @@ ChalanListPage({super.key, required this.organization});
                       _buildChalanImage(context, chalan),
                       SizedBox(width: 16.w),
                       Expanded(child: _buildChalanInfo(context, chalan)),
-                      _buildChalanMenu(context, chalan),
+                      _buildChalanMenu(context, chalan, organization),
                     ],
                   ),
                 ),
@@ -297,31 +324,27 @@ ChalanListPage({super.key, required this.organization});
 
   /// Build chalan image
   Widget _buildChalanImage(BuildContext context, Chalan chalan) {
-    return Hero(
-      tag: 'chalan_image_${chalan.id}',
-      child: Container(
-        width: 60.w,
-        height: 60.h,
-        decoration: BoxDecoration(
-          color: context.colors.primary.withAlpha(26),
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        child: chalan.imageUrl != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(12.r),
-                child: MegaImageWidget(
-                  imageUrl: chalan.imageUrl,
-                  width: 60.w,
-                  height: 60.h,
-                  fit: BoxFit.cover,
-                ),
-              )
-            : Icon(
-                Icons.receipt_long,
-                color: context.colors.primary,
-                size: 24.w,
-              ),
+    return Container(
+      width: 60.w,
+      height: 60.h,
+      decoration: BoxDecoration(
+        color: context.colors.primary.withAlpha(26),
+        borderRadius: BorderRadius.circular(12.r),
       ),
+      child: chalan.imageUrl != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: MegaImageWidget(
+                key: ValueKey(
+                  '${chalan.id}_${chalan.imageUrl}',
+                ), // ✅ Forces rebuild
+                imageUrl: chalan.imageUrl,
+                width: 60.w,
+                height: 60.h,
+                fit: BoxFit.cover,
+              ),
+            )
+          : Icon(Icons.receipt_long, color: context.colors.primary, size: 24.w),
     );
   }
 
@@ -392,7 +415,11 @@ ChalanListPage({super.key, required this.organization});
   }
 
   /// Build chalan menu
-  Widget _buildChalanMenu(BuildContext context, Chalan chalan) {
+  Widget _buildChalanMenu(
+    BuildContext context,
+    Chalan chalan,
+    Organization organization,
+  ) {
     return PopupMenuButton<String>(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       itemBuilder: (context) => [
@@ -442,7 +469,7 @@ ChalanListPage({super.key, required this.organization});
             _navigateToChalanDetail(context, chalan);
             break;
           case 'edit':
-            _navigateToEditChalan(context, chalan);
+            _navigateToEditChalan(context, chalan, organization);
             break;
           case 'delete':
             _showDeleteConfirmation(context, chalan);
@@ -453,7 +480,10 @@ ChalanListPage({super.key, required this.organization});
   }
 
   /// Build floating action button
-  Widget _buildFloatingActionButton(BuildContext context) {
+  Widget _buildFloatingActionButton(
+    BuildContext context,
+    Organization organization,
+  ) {
     return BlocBuilder<ChalanBloc, ChalanState>(
       builder: (context, state) {
         // Hide FAB during loading
@@ -462,7 +492,7 @@ ChalanListPage({super.key, required this.organization});
         }
 
         return FloatingActionButton.extended(
-          onPressed: () => _navigateToAddChalan(context),
+          onPressed: () => _navigateToAddChalan(context, organization),
           icon: const Icon(Icons.add),
           label: Text(
             'Add Chalan',
@@ -503,33 +533,40 @@ ChalanListPage({super.key, required this.organization});
   }
 
   /// Navigation methods
-  void _navigateToAddChalan(BuildContext context) async {
+  void _navigateToAddChalan(
+    BuildContext context,
+    Organization organization,
+  ) async {
     final chalans = context.read<FilterBloc>().state.originalChalans;
 
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) =>
-            AddChalanPage(organization: organization!, chalans: chalans),
+            AddChalanPage(organization: organization, chalans: chalans),
       ),
     );
 
     if (result == true) {
-      context.read<ChalanBloc>().add(RefreshChalansEvent(organization!));
+      context.read<ChalanBloc>().add(RefreshChalansEvent(organization));
     }
   }
 
-  void _navigateToEditChalan(BuildContext context, Chalan chalan) async {
+  void _navigateToEditChalan(
+    BuildContext context,
+    Chalan chalan,
+    Organization organization,
+  ) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) =>
-            AddChalanPage(organization: organization!, chalan: chalan),
+            AddChalanPage(organization: organization, chalan: chalan),
       ),
     );
 
     if (result == true) {
-      context.read<ChalanBloc>().add(RefreshChalansEvent(organization!));
+      context.read<ChalanBloc>().add(RefreshChalansEvent(organization));
     }
   }
 

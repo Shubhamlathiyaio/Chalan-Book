@@ -3,7 +3,7 @@ import 'package:chalan_book_app/core/extensions/context_extension.dart';
 import 'package:chalan_book_app/features/auth/bloc/auth_bloc.dart';
 import 'package:chalan_book_app/features/auth/bloc/auth_event.dart';
 import 'package:chalan_book_app/features/auth/bloc/auth_state.dart';
-import 'package:chalan_book_app/features/auth/views/forgot_password.dart';
+import 'package:chalan_book_app/features/auth/views/get_user_name_page.dart';
 import 'package:chalan_book_app/features/auth/views/signup_page.dart';
 import 'package:chalan_book_app/features/home/views/home_page.dart';
 import 'package:chalan_book_app/features/shared/widgets/custom_text_field.dart';
@@ -27,11 +27,16 @@ class LoginPage extends StatelessWidget {
           child: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthSuccess) {
-                context.pushReplacement(const HomePage());
+                context.pushReplacement(const HomePage()); // Dashboard
+              } else if (state is AuthProfileSuccess) {
+                context.pushReplacement(
+                  const GetUserNamePage(),
+                ); // Complete profile
               } else if (state is AuthFailure) {
                 context.showSnackbar(isError: true, state.message);
               }
             },
+
             builder: (_, state) {
               final loading = state is AuthLoading;
 
@@ -64,11 +69,11 @@ class LoginPage extends StatelessWidget {
                       onPressed: () => context.push(const SignupPage()),
                       child: Text(AppStrings.dontHaveAccount),
                     ),
-                    TextButton(
-                      onPressed: () =>
-                          context.push(const ForgotPasswordScreen()),
-                      child: Text(AppStrings.forgotPassword),
-                    ),
+                    // TextButton(
+                    //   onPressed: () =>
+                    //       context.push(const ForgotPasswordScreen()),
+                    //   child: Text(AppStrings.forgotPassword),
+                    // ),
                   ],
                 ),
               );

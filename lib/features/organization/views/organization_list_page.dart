@@ -3,17 +3,16 @@ import 'package:chalan_book_app/core/constants/app_colors.dart';
 import 'package:chalan_book_app/core/constants/strings.dart';
 import 'package:chalan_book_app/core/models/organization.dart';
 import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
+import 'package:chalan_book_app/features/organization/views/create_organization_page.dart';
 import 'package:chalan_book_app/features/organization/views/organization_detail_page.dart';
 import 'package:chalan_book_app/features/shared/widgets/empty_state.dart';
 import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
 import 'package:chalan_book_app/main.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class OrganizationListPage extends StatefulWidget {
-  final VoidCallback onOrganizationCreated;
-  const OrganizationListPage({super.key, required this.onOrganizationCreated});
+  const OrganizationListPage({super.key});
 
   @override
   State<OrganizationListPage> createState() => _OrganizationListPageState();
@@ -53,7 +52,10 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
                   Expanded(
                     child: Text(
                       'Organizations (${state.organizations.length})',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(
@@ -78,21 +80,32 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => OrganizationDetailPage(organization: org),
+                              builder: (context) =>
+                                  OrganizationDetailPage(organization: org),
                             ),
                           ),
                           leading: CircleAvatar(
                             backgroundColor: Colors.blue,
-                            child: Text(org.name[0].toUpperCase(), style: const TextStyle(color: Colors.white)),
+                            child: Text(
+                              org.name[0].toUpperCase(),
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
-                          title: Text(org.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          title: Text(
+                            org.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (org.description != null) Text(org.description ?? ""),
+                              if (org.description != null)
+                                Text(org.description ?? ""),
                               Text(
                                 'Created ${formatDate(org.createdAt)}',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                           ),
@@ -103,9 +116,13 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                              supabase.auth.currentUser?.id == org.ownerId ? "Owned" : "Joined",
+                              supabase.auth.currentUser?.id == org.ownerId
+                                  ? "Owned"
+                                  : "Joined",
                               style: poppins.w400.fs10.textColor(
-                                supabase.auth.currentUser?.id == org.ownerId ? AppColors.xff725ddb : AppColors.xff33a752,
+                                supabase.auth.currentUser?.id == org.ownerId
+                                    ? AppColors.xff725ddb
+                                    : AppColors.xff33a752,
                               ),
                             ),
                           ),
@@ -127,6 +144,14 @@ class _OrganizationListPageState extends State<OrganizationListPage> {
   }
 
   void _navigateToCreateOrganization() async {
-    // Navigation logic here
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return CreateOrganizationPage(
+          );
+        },
+      ),
+    );
   }
 }

@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/extensions/context_extension.dart';
 import '../../auth/views/splash_page.dart';
 import '../../theme/bloc/theme_bloc.dart';
-import '../../../main.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});

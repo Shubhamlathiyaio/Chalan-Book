@@ -1,6 +1,6 @@
+import 'package:chalan_book_app/core/configs/app_typography.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../extensions/typography_extension.dart';
 
 class AppTextTheme {
   static TextTheme get lightTextTheme {

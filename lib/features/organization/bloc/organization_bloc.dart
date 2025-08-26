@@ -1,3 +1,4 @@
+import 'package:chalan_book_app/main.dart';
 import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -135,7 +136,6 @@ class OrganizationError extends OrganizationState {
 
 // ------------------- MERGED BLOC -------------------
 class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
-  final supa = Supa();
   final ImagePicker _imagePicker = ImagePicker();
 
   OrganizationBloc() : super(const OrganizationInitial()) {
@@ -167,10 +167,11 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       ),
     );
     try {
-      final user = supa.currentUser;
+      final user = supabase.auth.currentUser;
+
       if (user == null) throw Exception('User not authenticated');
 
-      final response = await supa
+      final response = await supabase
           .from(AppKeys.organizationUsersTable)
           .select('organization_id, organizations:organization_id(*)')
           .eq('user_id', user.id);
@@ -216,10 +217,10 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       ),
     );
     try {
-      final user = supa.currentUser;
+      final user = supabase.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
-      final existing = await supa
+      final existing = await supabase
           .from(AppKeys.organizationsTable)
           .select('id')
           .eq('name', event.name.trim())
@@ -230,7 +231,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       }
 
       final orgId = const Uuid().v4();
-      await supa.from(AppKeys.organizationsTable).insert({
+      await supabase.from(AppKeys.organizationsTable).insert({
         'id': orgId,
         'name': event.name.trim(),
         'description': event.description?.trim(),
@@ -238,7 +239,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      await supa.from(AppKeys.organizationUsersTable).insert({
+      await supabase.from(AppKeys.organizationUsersTable).insert({
         'id': const Uuid().v4(),
         'organization_id': orgId,
         'user_id': user.id,
@@ -426,8 +427,7 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       }
 
       final supa = Supa(
-        edgeFunctionUrl:
-            'https://jzhrtmwaqezmrmyoqeka.supabase.co/functions/v1/add-member-in-organization',
+        edgeFunctionUrl: AppKeys.addMemberToOrgUrl,
         customAuthToken: accessToken,
       );
 
@@ -465,4 +465,6 @@ class OrganizationBloc extends Bloc<OrganizationEvent, OrganizationState> {
       );
     }
   }
+
+
 }

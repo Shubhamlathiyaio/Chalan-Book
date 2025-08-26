@@ -1,5 +1,7 @@
+import 'package:chalan_book_app/core/constants/app_keys.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
 import 'package:chalan_book_app/features/auth/bloc/auth_bloc.dart';
+import 'package:chalan_book_app/features/auth/views/get_user_name_page.dart';
 import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,19 +25,36 @@ class _SplashPageState extends State<SplashPage> {
 
   void _checkAuthStatus() async {
     await Future.delayed(const Duration(seconds: 2));
-
     final session = supa.currentSession;
+    final userId = supa
+        .currentUserId; // assumes supa.currentUserId returns current user's ID
+
     if (mounted) {
-      if (session != null) {
-        context.pushReplacement(
-          // BlocProvider(
-          //   create: (_) =>
-          //       OrganizationBloc()..add(LoadOrganizationsRequested()),
-          //   child:
-          // ),
-          const HomePage(),
-        );
+      if (session != null && userId != null) {
+        // Check for profile in profiles table
+        final profile = await supa
+            .from(AppKeys.profilesTable)
+            .select('id')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (profile != null) {
+          // User profile exists: go to HomePage
+          context.pushReplacement(const HomePage());
+        } else {
+          // No user profile: go to GetUserNamePage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BlocProvider(
+                create: (_) => AuthBloc(),
+                child: const GetUserNamePage(),
+              ),
+            ),
+          );
+        }
       } else {
+        // Not authenticated: go to LoginPage
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

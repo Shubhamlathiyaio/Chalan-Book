@@ -1,7 +1,7 @@
+import 'package:chalan_book_app/core/configs/app_typography.dart';
 import 'package:chalan_book_app/core/configs/edge.dart';
 import 'package:chalan_book_app/core/configs/gap.dart';
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
-import 'package:chalan_book_app/core/extensions/typography_extension.dart';
 import 'package:chalan_book_app/core/models/chalan.dart';
 import 'package:chalan_book_app/core/models/organization.dart';
 import 'package:chalan_book_app/features/chalan/bloc/chalan_bloc.dart';
@@ -69,13 +69,6 @@ class _AddChalanPageState extends State<AddChalanPage> {
           ? "${_missingNumbers.first}"
           : "";
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final state = context.read<ChalanBloc>().state;
-      if (state is ChalanLoaded) {
-        context.read<ChalanBloc>().add(LoadMissingChalanNumbers(state.chalans));
-      }
-    });
   }
 
   List<int> _calculateMissingNumbers(List<Chalan> chalans) {
@@ -196,11 +189,6 @@ class _AddChalanPageState extends State<AddChalanPage> {
             if (number == null || number <= 0)
               return 'Please enter a valid number';
             return null;
-          },
-          onChanged: (_) {
-            if (state is ChalanLoaded && state.selectedNumber != null) {
-              context.read<ChalanBloc>().add(ClearSelectedNumber());
-            }
           },
         ),
         if (!isUpdateMode && _missingNumbers.length > 1) ...[

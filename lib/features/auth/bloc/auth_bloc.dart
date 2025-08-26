@@ -1,68 +1,75 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'package:chalan_book_app/features/auth/bloc/auth_event.dart';
 import 'package:chalan_book_app/features/auth/bloc/auth_state.dart';
 import 'package:chalan_book_app/services/auth_services.dart';
-import 'package:chalan_book_app/services/supa.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final Supa supa = Supa();
   AuthBloc() : super(AuthInitial()) {
     on<AuthLoginRequested>(_login);
     on<AuthSignupRequested>(_signup);
+    on<AuthProfileRequested>(_createProfile);
   }
 
   Future<void> _login(AuthLoginRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      final res = await AuthService().login(
-        email: event.email,
-        password: event.password,
-      ); //                      The getter 'user' isn't defined for the type 'Map<String, dynamic>'. Try importing the library that defines 'user' , correcting the name to t e name o an existing getter, or defining a getter or field named 'user'.
+      final res = await AuthService().login(email: event.email, password: event.password);
       final user = res['user'];
       if (user == null) throw const AuthException('Login failed');
 
-      // Invite logic removed
+      // Check if profile exists
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
-      emit(AuthSuccess());
+      if (profile != null) {
+        emit(AuthSuccess());
+      } else {
+        emit(AuthProfileSuccess());
+      }
     } on AuthException catch (e) {
-      print("Auth error: ${e.message}");
       emit(AuthFailure(e.message));
-    } catch (e) {
-      print("Unexpected error: $e");
+    } catch (_) {
       emit(AuthFailure('Unexpected error'));
     }
   }
 
-  Future<void> _signup(
-    AuthSignupRequested event,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _signup(AuthSignupRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      final res = await AuthService().signUp(
-        name: event.name,
-        email: event.email,
-        password: event.password,
-      );
-      if (res['user'] == null) throw const AuthException('Signup failed');
+      final res = await AuthService().signUp(email: event.email, password: event.password);
+
+      if (res['success'] != true || res['userId'] == null) {
+        throw const AuthException('Signup failed');
+      }
+
+      // Wait for email confirmation; no profile creation yet
       emit(AuthSuccess());
     } on AuthException catch (e) {
       emit(AuthFailure(e.message));
-    } catch (e) {
+    } catch (_) {
       emit(AuthFailure('Unexpected error'));
     }
   }
 
-  @override
-  void onChange(Change<AuthState> change) {
-    super.onChange(change);
-    print('AuthBloc change: $change');
+  Future<void> _createProfile(AuthProfileRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      emit(AuthFailure('No authenticated user found.'));
+      return;
+    }
+    try {
+      await Supabase.instance.client.from('profiles').insert({
+        'id': user.id,
+        'name': event.name,
+      });
+      emit(AuthProfileSuccess());
+    } catch (e) {
+      emit(AuthFailure('Failed to create user profile.'));
+    }
   }
-
-  // @override
-  // void onTransition(Transition<AuthEvent, AuthState> transition) {
-  //   print('AuthBloc transition: $transition');
-  //   super.onTransition(transition);
-  // }
 }

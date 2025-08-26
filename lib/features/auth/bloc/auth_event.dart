@@ -9,9 +9,18 @@ class AuthLoginRequested extends AuthEvent {
 }
 
 class AuthSignupRequested extends AuthEvent {
-  final String name;
+  // final String name;
   final String email;
   final String password;
 
-  AuthSignupRequested({ required this.name,required this.email, required this.password});
+  AuthSignupRequested({
+    // required this.name,
+    required this.email,
+    required this.password,
+  });
+}
+
+class AuthProfileRequested extends AuthEvent {
+  final String name;
+  AuthProfileRequested({required this.name});
 }

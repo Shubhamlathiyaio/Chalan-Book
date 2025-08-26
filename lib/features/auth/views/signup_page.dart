@@ -17,13 +17,13 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
+  // final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
+    // _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -62,19 +62,19 @@ class _SignupPageState extends State<SignupPage> {
                     gap.h24,
 
                     // Name field
-                    CustomTextField(
-                      controller: _nameCtrl,
-                      label: AppStrings.name,
-                      keyboardType: TextInputType.name,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Enter your name';
-                        }
-                        return null;
-                      },
-                    ),
+                    // CustomTextField(
+                    //   controller: _nameCtrl,
+                    //   label: AppStrings.name,
+                    //   keyboardType: TextInputType.name,
+                    //   validator: (v) {
+                    //     if (v == null || v.trim().isEmpty) {
+                    //       return 'Enter your name';
+                    //     }
+                    //     return null;
+                    //   },
+                    // ),
 
-                    gap.h16,
+                    // gap.h16,
 
                     // Email field
                     CustomTextField(
@@ -109,7 +109,7 @@ class _SignupPageState extends State<SignupPage> {
                         if (_formKey.currentState!.validate()) {
                           context.read<AuthBloc>().add(
                             AuthSignupRequested(
-                              name: _nameCtrl.text.trim(),
+                              // name: _nameCtrl.text.trim(),
                               email: _emailCtrl.text.trim(),
                               password: _passwordCtrl.text.trim(),
                             ),

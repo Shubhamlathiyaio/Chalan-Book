@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/extensions/context_extension.dart';
-import '../../../core/extensions/typography_extension.dart';
 
 class LoadingWidget extends StatelessWidget {
   final String message;

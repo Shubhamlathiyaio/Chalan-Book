@@ -1,13 +1,12 @@
 import 'package:chalan_book_app/core/extensions/context_extension.dart';
 import 'package:chalan_book_app/features/organization/bloc/organization_bloc.dart';
-import 'package:chalan_book_app/features/organization/views/member_card.dart';
+import 'package:chalan_book_app/features/organization/widgets/member_card.dart';
 import 'package:chalan_book_app/features/organization/views/qr_scanner_page.dart';
 import 'package:chalan_book_app/features/shared/widgets/format_date.dart';
 import 'package:chalan_book_app/services/supa.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models/organization.dart';
-import '../../../main.dart';
 
 class OrganizationDetailPage extends StatefulWidget {
   final Organization organization;

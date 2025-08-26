@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:chalan_book_app/core/models/organization.dart';
-import 'package:chalan_book_app/services/supa.dart';
+import 'package:chalan_book_app/main.dart';
+import 'package:chalan_book_app/services/mega_image_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/models/chalan.dart';
-import '../../../main.dart';
 import '../../organization/bloc/organization_bloc.dart';
 
 // ################################################################################
@@ -30,12 +30,12 @@ class UpdateChalanEvent extends ChalanEvent {
   UpdateChalanEvent(this.chalan);
 }
 
-class ShowChalanLoading extends ChalanEvent {}
-
 class DeleteChalanEvent extends ChalanEvent {
   final Chalan chalan;
   DeleteChalanEvent(this.chalan);
 }
+
+class ShowChalanLoading extends ChalanEvent {}
 
 class RefreshChalansEvent extends ChalanEvent {
   final Organization organization;
@@ -45,15 +45,6 @@ class RefreshChalansEvent extends ChalanEvent {
 class SelectChalanNumberEvent extends ChalanEvent {
   final int selectedNumber;
   SelectChalanNumberEvent(this.selectedNumber);
-}
-
-class ClearSelectedChalanNumberEvent extends ChalanEvent {}
-
-class ClearSelectedNumber extends ChalanEvent {}
-
-class LoadMissingChalanNumbers extends ChalanEvent {
-  final List<Chalan> existingChalans;
-  LoadMissingChalanNumbers(this.existingChalans);
 }
 
 class PickImageFromCamera extends ChalanEvent {}
@@ -85,20 +76,31 @@ class ChalanLoading extends ChalanState {}
 
 class ChalanLoaded extends ChalanState {
   final List<Chalan> chalans;
-  final List<int> missingNumbers;
-  final int nextAvailableNumber;
   final int? selectedNumber;
   final File? selectedImage;
   final DateTime selectedDate;
 
   ChalanLoaded({
     required this.chalans,
-    required this.missingNumbers,
-    required this.nextAvailableNumber,
     this.selectedNumber,
     this.selectedImage,
     required this.selectedDate,
   });
+
+  // ✅ Helper methods for easy copying
+  ChalanLoaded copyWith({
+    List<Chalan>? chalans,
+    int? selectedNumber,
+    File? selectedImage,
+    DateTime? selectedDate,
+  }) {
+    return ChalanLoaded(
+      chalans: chalans ?? this.chalans,
+      selectedNumber: selectedNumber ?? this.selectedNumber,
+      selectedImage: selectedImage ?? this.selectedImage,
+      selectedDate: selectedDate ?? this.selectedDate,
+    );
+  }
 }
 
 class ChalanEmpty extends ChalanState {}
@@ -108,32 +110,11 @@ class ChalanError extends ChalanState {
   ChalanError(this.message);
 }
 
-class ChalanOperationSuccess extends ChalanState {
-  final String message;
-  final List<Chalan> chalans;
-  final List<int> missingNumbers;
-  final int nextAvailableNumber;
-  final int? selectedNumber;
-  final File? selectedImage;
-  final DateTime selectedDate;
-
-  ChalanOperationSuccess(
-    this.message,
-    this.chalans, {
-    required this.missingNumbers,
-    required this.nextAvailableNumber,
-    this.selectedNumber,
-    this.selectedImage,
-    required this.selectedDate,
-  });
-}
-
 // ################################################################################
 // #                                     BLOC                                     #
 // ################################################################################
 class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
   final OrganizationBloc organizationBloc;
-  final supa = Supa();
   StreamSubscription? _organizationSubscription;
 
   ChalanBloc({required this.organizationBloc}) : super(ChalanInitial()) {
@@ -143,23 +124,24 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     on<DeleteChalanEvent>(_onDeleteChalan);
     on<RefreshChalansEvent>(_onRefreshChalans);
     on<SelectChalanNumberEvent>(_onSelectChalanNumber);
-    on<ClearSelectedChalanNumberEvent>(_onClearSelectedNumber);
-    on<LoadMissingChalanNumbers>(_onLoadMissingChalanNumbers);
     on<PickImageFromCamera>(_onPickImageFromCamera);
     on<PickImageFromGallery>(_onPickImageFromGallery);
     on<RemoveImage>(_onRemoveImage);
     on<PickChalanDate>(_onPickChalanDate);
 
-    _initializeOrganizationListener();
+    _initializeOrganizationListener(); // ✅ Already listening to org changes
   }
 
   void _initializeOrganizationListener() {
     _organizationSubscription = organizationBloc.stream.listen((orgState) {
       if (orgState is OrganizationLoaded && orgState.currentOrg != null) {
-        add(LoadChalansEvent(orgState.currentOrg!));
+        add(
+          LoadChalansEvent(orgState.currentOrg!),
+        ); // ✅ Auto-load chalans when org changes
       }
     });
 
+    // Load initial data
     if (organizationBloc.state is OrganizationLoaded) {
       final state = organizationBloc.state as OrganizationLoaded;
       if (state.currentOrg != null) {
@@ -174,32 +156,6 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     return super.close();
   }
 
-  List<int> _calculateMissingNumbers(List<Chalan> chalans) {
-    final numbers = chalans
-        .map((c) => int.tryParse(c.chalanNumber) ?? 0)
-        .where((n) => n > 0)
-        .toSet();
-
-    if (numbers.isEmpty) return [];
-
-    final maxNumber = numbers.reduce((a, b) => a > b ? a : b);
-    return [
-      for (int i = 1; i <= maxNumber; i++)
-        if (!numbers.contains(i)) i,
-    ];
-  }
-
-  int _getNextAvailableNumber(List<int> missingNumbers, List<Chalan> chalans) {
-    if (missingNumbers.isNotEmpty) return missingNumbers.first;
-    final numbers = chalans
-        .map((c) => int.tryParse(c.chalanNumber) ?? 0)
-        .where((n) => n > 0);
-    final max = numbers.isNotEmpty
-        ? numbers.reduce((a, b) => a > b ? a : b)
-        : 0;
-    return max + 1;
-  }
-
   Future<void> _onLoadChalans(
     LoadChalansEvent event,
     Emitter<ChalanState> emit,
@@ -207,18 +163,14 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     emit(ChalanLoading());
 
     try {
-      final response = await supa
+      final response = await supabase
           .from(AppKeys.chalansTable)
           .select()
-          .eq('organization_id', event.organization.id)
-          .order('chalan_number', ascending: true);
+          .eq('organization_id', event.organization.id);
 
       final chalans = response.map((e) => Chalan.fromJson(e)).toList();
 
-      if (chalans.isEmpty) {
-        emit(ChalanEmpty());
-        return;
-      }
+      if (chalans.isEmpty) return emit(ChalanEmpty());
 
       // 🔄 Optional: Validate Mega URLs (remove invalid ones)
       final validChalans = chalans.where((chalan) {
@@ -227,14 +179,9 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
             chalan.imageUrl!.contains('mega.co.nz');
       }).toList();
 
-      final missing = _calculateMissingNumbers(validChalans);
-      final next = _getNextAvailableNumber(missing, validChalans);
-
       emit(
         ChalanLoaded(
           chalans: validChalans,
-          missingNumbers: missing,
-          nextAvailableNumber: next,
           selectedNumber: null,
           selectedImage: null,
           selectedDate: DateTime.now(),
@@ -252,26 +199,19 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     emit(ChalanLoading());
 
     try {
-      // Insert the chalan
-      await supa.from(AppKeys.chalansTable).insert(event.chalan.toJson());
+      await supabase.from(AppKeys.chalansTable).insert(event.chalan.toJson());
 
-      // Reload all chalans from database to get fresh data
-      final response = await supa
+      // Reload fresh data
+      final response = await supabase
           .from(AppKeys.chalansTable)
           .select()
-          .eq('organization_id', event.chalan.organizationId)
-          .order('chalan_number', ascending: true);
+          .eq('organization_id', event.chalan.organizationId);
 
       final chalans = response.map((e) => Chalan.fromJson(e)).toList();
-
-      final missing = _calculateMissingNumbers(chalans);
-      final next = _getNextAvailableNumber(missing, chalans);
 
       emit(
         ChalanLoaded(
           chalans: chalans,
-          missingNumbers: missing,
-          nextAvailableNumber: next,
           selectedNumber: null,
           selectedImage: null,
           selectedDate: DateTime.now(),
@@ -282,53 +222,24 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     }
   }
 
-  void _onUpdateChalanDate(UpdateChalanDate event, Emitter<ChalanState> emit) {
-    if (state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
-      emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: current.selectedNumber,
-          selectedImage: current.selectedImage,
-          selectedDate: event.date,
-        ),
-      );
-    }
-  }
-
   Future<void> _onUpdateChalan(
     UpdateChalanEvent event,
     Emitter<ChalanState> emit,
   ) async {
     try {
-      await supa
+      await supabase
           .from(AppKeys.chalansTable)
           .update(event.chalan.toJson())
           .eq('id', event.chalan.id);
 
       if (state is ChalanLoaded) {
-        final current = (state as ChalanLoaded);
+        final current = state as ChalanLoaded;
         final updated = List<Chalan>.from(current.chalans);
         final index = updated.indexWhere((c) => c.id == event.chalan.id);
+
         if (index != -1) {
           updated[index] = event.chalan;
-
-          final missing = _calculateMissingNumbers(updated);
-          final next = _getNextAvailableNumber(missing, updated);
-
-          emit(
-            ChalanOperationSuccess(
-              'Chalan updated successfully!',
-              updated,
-              missingNumbers: missing,
-              nextAvailableNumber: next,
-              selectedNumber: current.selectedNumber,
-              selectedImage: current.selectedImage,
-              selectedDate: current.selectedDate,
-            ),
-          );
+          emit(current.copyWith(chalans: updated));
         }
       }
     } catch (e) {
@@ -336,50 +247,56 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     }
   }
 
-  Future<void> _onDeleteChalan(
+Future<void> _onDeleteChalan(
     DeleteChalanEvent event,
     Emitter<ChalanState> emit,
-  ) async {
+) async {
+  try {
+    // 1. Record image to deleted_images table
     try {
-      if (event.chalan.imageUrl != null) {
-        final uri = Uri.parse(event.chalan.imageUrl!);
-        final fileName = uri.pathSegments.last;
-        await supa.storage.from(AppKeys.chalanImagesBucket).remove([
-          fileName,
-        ]);
-      }
-
-      await supa
-          .from(AppKeys.chalansTable)
-          .delete()
-          .eq('id', event.chalan.id);
-
-      if (state is ChalanLoaded) {
-        final current = (state as ChalanLoaded);
-        final updated = List<Chalan>.from(current.chalans)
-          ..removeWhere((c) => c.id == event.chalan.id);
-
-        if (updated.isEmpty) {
-          emit(ChalanEmpty());
-        } else {
-          final missing = _calculateMissingNumbers(updated);
-          final next = _getNextAvailableNumber(missing, updated);
-
-          emit(
-            ChalanOperationSuccess(
-              'Chalan deleted successfully!',
-              updated,
-              missingNumbers: missing,
-              nextAvailableNumber: next,
-              selectedNumber: current.selectedNumber,
-              selectedImage: current.selectedImage,
-              selectedDate: current.selectedDate,
-            ),
-          );
-        }
-      }
+      await supabase.from('deleted_images').insert({
+        'image_url': event.chalan.imageUrl,
+        'deleted_at': DateTime.now().toUtc().toIso8601String(),
+        'chalan_id': event.chalan.id,
+        'note': 'Marked for manual deletion',
+      });
+      print('Deleted image URL logged successfully');
     } catch (e) {
-      emit(ChalanError('Error deleting chalan: $e'));
+      print('Failed to log deleted image URL: $e');
+    }
+
+    // 2. Delete chalan record
+    try {
+      await supabase
+        .from(AppKeys.chalansTable)
+        .delete()
+        .eq('id', event.chalan.id);
+      print('Chalan deleted successfully');
+    } catch (e) {
+      print('Failed to delete chalan: $e');
+      throw Exception('Delete failed: $e');
+    }
+
+    // 3. Update state
+    if (state is ChalanLoaded) {
+      final current = state as ChalanLoaded;
+      final updated = List<Chalan>.from(current.chalans)
+        ..removeWhere((c) => c.id == event.chalan.id);
+
+      if (updated.isEmpty) {
+        emit(ChalanEmpty());
+      } else {
+        emit(current.copyWith(chalans: updated));
+      }
+    }
+  } catch (e) {
+    emit(ChalanError('Error deleting chalan: $e'));
+  }
+}
+
+  void _onUpdateChalanDate(UpdateChalanDate event, Emitter<ChalanState> emit) {
+    if (state is ChalanLoaded) {
+      emit((state as ChalanLoaded).copyWith(selectedDate: event.date));
     }
   }
 
@@ -395,81 +312,10 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     Emitter<ChalanState> emit,
   ) {
     if (state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
       emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: event.selectedNumber,
-          selectedImage: current.selectedImage,
-          selectedDate: current.selectedDate,
-        ),
+        (state as ChalanLoaded).copyWith(selectedNumber: event.selectedNumber),
       );
     }
-  }
-
-  void _onClearSelectedNumber(
-    ClearSelectedChalanNumberEvent event,
-    Emitter<ChalanState> emit,
-  ) {
-    if (state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
-      emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: null,
-          selectedImage: current.selectedImage,
-          selectedDate: current.selectedDate,
-        ),
-      );
-    }
-  }
-
-  _onLoadMissingChalanNumbers(
-    LoadMissingChalanNumbers event,
-    Emitter<ChalanState> emit,
-  ) {
-    final existingNumbers = event.existingChalans
-        .map((chalan) => int.tryParse(chalan.chalanNumber) ?? 0)
-        .where((num) => num > 0)
-        .toSet();
-
-    if (existingNumbers.isEmpty) {
-      emit(
-        ChalanLoaded(
-          missingNumbers: [],
-          nextAvailableNumber: 1,
-          selectedNumber: null,
-          chalans: event.existingChalans,
-          selectedImage: null,
-          selectedDate: DateTime.now(),
-        ),
-      );
-      return;
-    }
-
-    final maxNumber = existingNumbers.reduce((a, b) => a > b ? a : b);
-    final missingNumbers = [
-      for (int i = 1; i <= maxNumber; i++)
-        if (!existingNumbers.contains(i)) i,
-    ];
-    final nextAvailable = missingNumbers.isNotEmpty
-        ? missingNumbers.first
-        : maxNumber + 1;
-
-    emit(
-      ChalanLoaded(
-        missingNumbers: missingNumbers,
-        nextAvailableNumber: nextAvailable,
-        selectedNumber: null,
-        chalans: event.existingChalans,
-        selectedImage: null,
-        selectedDate: DateTime.now(),
-      ),
-    );
   }
 
   Future<void> _onPickImageFromCamera(
@@ -484,29 +330,9 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     final imageFile = File(pickedFile.path);
 
     if (state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
-      emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: current.selectedNumber,
-          selectedImage: imageFile, // ✅ Set the picked image
-          selectedDate: current.selectedDate,
-        ),
-      );
+      emit((state as ChalanLoaded).copyWith(selectedImage: imageFile));
     } else {
-      // ✅ Handle case when state is not ChalanLoaded yet
-      emit(
-        ChalanLoaded(
-          chalans: [],
-          missingNumbers: [],
-          nextAvailableNumber: 1,
-          selectedNumber: null,
-          selectedImage: imageFile, // ✅ Set the picked image
-          selectedDate: DateTime.now(),
-        ),
-      );
+      emit((state as ChalanLoaded).copyWith(selectedImage: imageFile));
     }
   }
 
@@ -522,45 +348,15 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     final imageFile = File(pickedFile.path);
 
     if (state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
-      emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: current.selectedNumber,
-          selectedImage: imageFile, // ✅ Set the picked image
-          selectedDate: current.selectedDate,
-        ),
-      );
+      emit((state as ChalanLoaded).copyWith(selectedImage: imageFile));
     } else {
-      // ✅ Handle case when state is not ChalanLoaded yet
-      emit(
-        ChalanLoaded(
-          chalans: [],
-          missingNumbers: [],
-          nextAvailableNumber: 1,
-          selectedNumber: null,
-          selectedImage: imageFile, // ✅ Set the picked image
-          selectedDate: DateTime.now(),
-        ),
-      );
+      emit((state as ChalanLoaded).copyWith(selectedImage: imageFile));
     }
   }
 
   void _onRemoveImage(RemoveImage event, Emitter<ChalanState> emit) {
     if (state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
-      emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: current.selectedNumber,
-          selectedImage: null,
-          selectedDate: current.selectedDate,
-        ),
-      );
+      emit((state as ChalanLoaded).copyWith(selectedImage: null));
     }
   }
 
@@ -576,17 +372,7 @@ class ChalanBloc extends Bloc<ChalanEvent, ChalanState> {
     );
 
     if (picked != null && state is ChalanLoaded) {
-      final current = state as ChalanLoaded;
-      emit(
-        ChalanLoaded(
-          chalans: current.chalans,
-          missingNumbers: current.missingNumbers,
-          nextAvailableNumber: current.nextAvailableNumber,
-          selectedNumber: current.selectedNumber,
-          selectedImage: current.selectedImage,
-          selectedDate: picked,
-        ),
-      );
+      emit((state as ChalanLoaded).copyWith(selectedDate: picked));
     }
   }
 }

@@ -1,4 +1,3 @@
-import 'package:chalan_book_app/features/shared/local_bg/preference_helper.dart';
 
 class AdvancedChalanFilter {
   final String searchQuery;

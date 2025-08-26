@@ -9,10 +9,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/extensions/context_extension.dart';
 import '../../theme/bloc/theme_bloc.dart';
-import '../../../main.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -42,226 +40,242 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final user = supa.currentUser;
 
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
+    return WillPopScope(
+      onWillPop: () async {
+        final state = context.read<ProfileBloc>().state;
+        if (state is! LoadedProfileState) {
+          return true;
+        }
+        if (state.isEditing) {
+          context.read<ProfileBloc>().add(ToggleEditingEvent());
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
 
-            // Profile Avatar
-            CircleAvatar(
-              radius: 60,
-              backgroundColor: context.colors.primary,
-              child: Text(
-                user?.email?.substring(0, 1).toUpperCase() ?? 'U',
-                style: context.textTheme.headlineLarge?.copyWith(
-                  color: context.colors.onPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Profile Info Card
-            BlocBuilder<ProfileBloc, ProfileState>(
-              builder: (context, state) {
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'Profile Information',
-                              style: context.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: () {
-                                context.read<ProfileBloc>().add(
-                                  ToggleEditingEvent(),
-                                );
-                              },
-                              icon: Icon(
-                                state.isEditing ? Icons.close : Icons.edit,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Name Field
-                        TextFormField(
-                          controller: _nameController,
-                          enabled: state.isEditing,
-                          decoration: const InputDecoration(
-                            labelText: 'Name',
-                            prefixIcon: Icon(Icons.person),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Email Field (Read-only)
-                        TextFormField(
-                          initialValue: user?.email ?? '',
-                          enabled: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email),
-                          ),
-                        ),
-
-                        if (state.isEditing) ...[
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: null, //_saveProfile,
-                              child: const Text('Save Changes'),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+              // Profile Avatar
+              CircleAvatar(
+                radius: 60,
+                backgroundColor: context.colors.primary,
+                child: Text(
+                  user?.email?.substring(0, 1).toUpperCase() ?? 'U',
+                  style: context.textTheme.headlineLarge?.copyWith(
+                    color: context.colors.onPrimary,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 16),
-
-            // Settings Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Settings',
-                      style: context.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Theme Toggle
-                    BlocBuilder<ThemeBloc, ThemeState>(
-                      builder: (context, state) {
-                        return SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          secondary: Icon(
-                            state.themeMode == ThemeMode.dark
-                                ? Icons.dark_mode
-                                : Icons.light_mode,
-                          ),
-                          title: Text(
-                            state.themeMode == ThemeMode.dark
-                                ? 'Light Mode'
-                                : 'Dark Mode',
-                          ),
-                          subtitle: Text(
-                            state.themeMode == ThemeMode.dark
-                                ? 'Dark theme enabled'
-                                : 'Light theme enabled',
-                          ),
-                          value: state.themeMode == ThemeMode.dark,
-                          onChanged: (value) {
-                            context.read<ThemeBloc>().add(ToggleThemeEvent());
-                          },
-                        );
-                      },
-                    ),
-                  ],
                 ),
               ),
-            ),
-            // QR Code Card (add this after the Settings Card)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'My Identity',
-                      style: context.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'This is your unique QR code that you can use to enter in others Organization.',
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        color: context.colors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
 
-                    // QR Code
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+              const SizedBox(height: 24),
+
+              // Profile Info Card
+              BlocBuilder<ProfileBloc, ProfileState>(
+                builder: (context, state) {
+                  if (state is! LoadedProfileState) {
+                    return const CircularProgressIndicator();
+                  }
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Profile Information',
+                                style: context.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                onPressed: () {
+                                  context.read<ProfileBloc>().add(
+                                    ToggleEditingEvent(),
+                                  );
+                                },
+                                icon: Icon(
+                                  state.isEditing ? Icons.close : Icons.edit,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Name Field
+                          TextFormField(
+                            controller: _nameController,
+                            enabled: state.isEditing,
+                            decoration: const InputDecoration(
+                              labelText: 'Name',
+                              prefixIcon: Icon(Icons.person),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Email Field (Read-only)
+                          TextFormField(
+                            initialValue: user?.email ?? '',
+                            enabled: false,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email),
+                            ),
+                          ),
+
+                          if (state.isEditing) ...[
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: null, //_saveProfile,
+                                child: const Text('Save Changes'),
+                              ),
                             ),
                           ],
-                        ),
-                        child: QrImageView(
-                          data: user?.id ?? '',
-                          version: QrVersions.auto,
-                          size: 200.0,
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                        ),
+                        ],
                       ),
                     ),
+                  );
+                },
+              ),
 
-                    const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-                    // Share Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _shareQRCode(user?.id),
-                        icon: const Icon(Icons.share),
-                        label: const Text('Share QR Code'),
+              // Settings Card
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Settings',
+                        style: context.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+
+                      // Theme Toggle
+                      BlocBuilder<ThemeBloc, ThemeState>(
+                        builder: (context, state) {
+                          return SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            secondary: Icon(
+                              state.themeMode == ThemeMode.dark
+                                  ? Icons.dark_mode
+                                  : Icons.light_mode,
+                            ),
+                            title: Text(
+                              state.themeMode == ThemeMode.dark
+                                  ? 'Light Mode'
+                                  : 'Dark Mode',
+                            ),
+                            subtitle: Text(
+                              state.themeMode == ThemeMode.dark
+                                  ? 'Dark theme enabled'
+                                  : 'Light theme enabled',
+                            ),
+                            value: state.themeMode == ThemeMode.dark,
+                            onChanged: (value) {
+                              context.read<ThemeBloc>().add(ToggleThemeEvent());
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              // QR Code Card (add this after the Settings Card)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My Identity',
+                        style: context.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'This is your unique QR code that you can use to enter in others Organization.',
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
-            // Log Out Button
-            ElevatedButton(
-              onPressed: () async {
-                await AuthService().signOut();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const SplashPage()),
-                );
-              },
-              child: const Text('Log Out'),
-            ),
-          ],
+                      // QR Code
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: QrImageView(
+                            data: user?.id ?? '',
+                            version: QrVersions.auto,
+                            size: 200.0,
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Share Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => _shareQRCode(user?.id),
+                          icon: const Icon(Icons.share),
+                          label: const Text('Share QR Code'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Log Out Button
+              ElevatedButton(
+                onPressed: () async {
+                  await AuthService().signOut();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const SplashPage()),
+                  );
+                },
+                child: const Text('Log Out'),
+              ),
+            ],
+          ),
         ),
       ),
+   
     );
   }
-
   // Future<void> _saveProfile() async {
   //   try {
   //     await supa.updateUser(
